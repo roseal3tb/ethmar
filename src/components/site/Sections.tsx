@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import {
   ArrowUpLeft,
   Award,
@@ -15,11 +15,10 @@ import {
   Target,
   Users,
 } from "lucide-react";
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Counter, Reveal } from "./Reveal";
-import { RegistrationDialog } from "./RegistrationDialog";
 import { Wave } from "./PublicLayout";
 import logoOnDark from "@/assets/ethmar-logo-light.png";
 import {
@@ -104,7 +103,7 @@ export function Hero() {
             <p className="mt-8 max-w-2xl text-lg leading-relaxed text-ivory/75 md:text-xl">
               مبادرة إثمار، المبادرة الطلابية الأولى في جامعة الملك سعود الهادفة إلى تعزيز الوعي
               المالي، وتمكين الجيل الصاعد من اكتساب المعرفة والمهارات اللازمة لصناعة قرارات مالية
-              واعية.
+              واعية
             </p>
           </Reveal>
           <Reveal delay={0.55}>
@@ -209,7 +208,7 @@ export function Impact() {
         </Reveal>
         <Reveal delay={0.1}>
           <p className="max-w-md text-lg leading-relaxed text-muted-foreground md:ms-auto">
-            أثر يتجدد كل فصل دراسي، بجهود أعضاء وقادة يؤمنون بأن الوعي المالي يبدأ من الجامعة.
+            أثر يتجدد كل فصل دراسي، بجهود أعضاء وقادة يؤمنون بأن الوعي المالي يبدأ من الجامعة
           </p>
         </Reveal>
       </div>
@@ -247,9 +246,9 @@ export function Impact() {
               {awards.map((a) => (
                 <li
                   key={a}
-                  className="flex items-center gap-4 rounded-2xl border border-ivory/10 bg-ivory/[0.04] p-5"
+                  className="group flex items-center gap-4 rounded-2xl border border-ivory/10 bg-ivory/[0.04] p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-gold/40 hover:bg-ivory/[0.08]"
                 >
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-gold/50 bg-gold/10 text-gold">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-gold/50 bg-gold/10 text-gold transition-transform duration-500 group-hover:rotate-[12deg] group-hover:scale-110">
                     <Award className="h-6 w-6" />
                   </span>
                   <span className="font-display text-base font-bold leading-snug">{a}</span>
@@ -282,8 +281,8 @@ export function AboutIntro() {
       <div className="mt-12 grid gap-4 md:grid-cols-2">
         {audience.map((a, i) => (
           <Reveal key={a.title} delay={i * 0.08}>
-            <div className="flex h-full items-start gap-5 rounded-3xl border border-border bg-card p-7 shadow-card">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-secondary font-display text-xl font-black text-primary">
+            <div className="group flex h-full items-start gap-5 rounded-3xl border border-border bg-card p-7 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-soft">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-secondary font-display text-xl font-black text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-mint">
                 {i + 1}
               </span>
               <div>
@@ -304,7 +303,7 @@ export function About() {
     <section className="mx-auto max-w-7xl px-5 py-12">
       <div className="grid gap-6 lg:grid-cols-5">
         <Reveal className="lg:col-span-3">
-          <div className="bg-hero grain relative h-full overflow-hidden rounded-[2rem] p-10 text-ivory md:p-14">
+          <div className="bg-hero grain group relative h-full overflow-hidden rounded-[2rem] p-10 text-ivory transition-shadow duration-500 hover:shadow-lift md:p-14">
             <img
               src={logoOnDark}
               alt=""
@@ -321,7 +320,7 @@ export function About() {
           </div>
         </Reveal>
         <Reveal delay={0.12} className="lg:col-span-2">
-          <div className="bg-sage-wash relative h-full overflow-hidden rounded-[2rem] border border-primary/10 p-10 md:p-12">
+          <div className="bg-sage-wash group relative h-full overflow-hidden rounded-[2rem] border border-primary/10 p-10 transition-all duration-500 hover:border-primary/25 hover:shadow-soft md:p-12">
             <span className="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-mint">
               <Target className="h-7 w-7" />
             </span>
@@ -364,7 +363,7 @@ export function Objectives() {
           </Reveal>
           <Reveal delay={0.1}>
             <p className="max-w-md text-lg text-ivory/65 md:ms-auto">
-              أربع محطات مترابطة، تبني كل منها على ما قبلها.
+              أربع محطات مترابطة، تبني كل منها على ما قبلها
             </p>
           </Reveal>
         </div>
@@ -466,9 +465,6 @@ export function Objectives() {
 
 export function Projects({ withHead = true }: { withHead?: boolean }) {
   const [selIdx, setSelIdx] = useState<number | null>(null);
-  const sel = selIdx === null ? null : projects[selIdx];
-  const go = (d: number) =>
-    setSelIdx((i) => (i === null ? i : (i + d + projects.length) % projects.length));
 
   return (
     <section className="mx-auto max-w-7xl px-5 py-24 md:py-28">
@@ -478,9 +474,14 @@ export function Projects({ withHead = true }: { withHead?: boolean }) {
             <SectionHead eyebrow="مشاريع إثمار" title="خمسة مشاريع، أثر واحد" />
           </Reveal>
           <Reveal delay={0.1} className="md:justify-self-end">
-            <Button asChild variant="outline" className="rounded-full border-primary/20 px-5">
+            <Button
+              asChild
+              variant="outline"
+              className="group rounded-full border-primary/20 px-5 hover:border-primary hover:bg-primary hover:text-primary-foreground"
+            >
               <Link to="/projects">
-                كل المشاريع <ArrowUpLeft />
+                كل المشاريع
+                <ArrowUpLeft className="transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:-translate-y-0.5" />
               </Link>
             </Button>
           </Reveal>
@@ -494,68 +495,161 @@ export function Projects({ withHead = true }: { withHead?: boolean }) {
         ))}
       </div>
 
-      <Dialog open={!!sel} onOpenChange={(o) => !o && setSelIdx(null)}>
+      <Dialog open={selIdx !== null} onOpenChange={(o) => !o && setSelIdx(null)}>
         <DialogContent
           dir="rtl"
-          className="max-h-[92vh] max-w-2xl gap-0 overflow-y-auto rounded-[1.75rem] border-0 p-0"
+          className="max-h-[92vh] max-w-2xl gap-0 overflow-y-auto overflow-x-hidden rounded-[1.75rem] border-0 p-0"
         >
-          {sel && (
-            <>
-              <div className="relative h-60 overflow-hidden sm:h-72">
-                <img src={sel.image} alt={sel.title} className="h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-deep via-deep/40 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-7 text-ivory">
-                  <span className="font-display text-sm font-bold text-mint">مشروع {sel.num}</span>
-                  <DialogTitle className="mt-1 font-display text-3xl font-black">
-                    {sel.title}
-                  </DialogTitle>
-                </div>
-              </div>
-              <div className="p-7">
-                <DialogDescription className="text-base leading-loose text-foreground/80">
-                  {sel.long}
-                </DialogDescription>
-                {(sel.outcomes || sel.location) && (
-                  <dl className="mt-6 grid gap-3 sm:grid-cols-2">
-                    {sel.outcomes && (
-                      <div className="rounded-2xl bg-sage p-4">
-                        <dt className="flex items-center gap-2 text-xs font-bold text-primary/70">
-                          <Sparkles className="h-4 w-4" /> المخرجات
-                        </dt>
-                        <dd className="mt-1.5 text-sm leading-relaxed text-foreground/85">
-                          {sel.outcomes}
-                        </dd>
-                      </div>
-                    )}
-                    {sel.location && (
-                      <div className="rounded-2xl bg-sage p-4">
-                        <dt className="flex items-center gap-2 text-xs font-bold text-primary/70">
-                          <MapPin className="h-4 w-4" /> الموقع
-                        </dt>
-                        <dd className="mt-1.5 text-sm leading-relaxed text-foreground/85">
-                          {sel.location}
-                        </dd>
-                      </div>
-                    )}
-                  </dl>
-                )}
-                <div className="mt-7 flex items-center justify-between border-t border-border pt-5">
-                  <Button variant="ghost" className="rounded-full" onClick={() => go(-1)}>
-                    <ChevronRight /> السابق
-                  </Button>
-                  <span className="text-xs text-muted-foreground" dir="ltr">
-                    {(selIdx ?? 0) + 1} / {projects.length}
-                  </span>
-                  <Button variant="ghost" className="rounded-full" onClick={() => go(1)}>
-                    التالي <ChevronLeft />
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
+          {selIdx !== null && <ProjectViewer index={selIdx} onIndexChange={setSelIdx} />}
         </DialogContent>
       </Dialog>
     </section>
+  );
+}
+
+/** Project details with direction-aware slides, arrow keys and swipe. */
+function ProjectViewer({
+  index,
+  onIndexChange,
+}: {
+  index: number;
+  onIndexChange: (i: number) => void;
+}) {
+  const reduce = useReducedMotion();
+  const [dir, setDir] = useState(0);
+  const sel = projects[index];
+  const go = (d: number) => {
+    setDir(d);
+    onIndexChange((index + d + projects.length) % projects.length);
+  };
+  const jump = (i: number) => {
+    if (i === index) return;
+    setDir(i > index ? 1 : -1);
+    onIndexChange(i);
+  };
+
+  // RTL: the "next" project sits to the left, so ArrowLeft moves forward
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") go(1);
+      if (e.key === "ArrowRight") go(-1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const slide = {
+    enter: (d: number) => (reduce ? { opacity: 0 } : { opacity: 0, x: d >= 0 ? -48 : 48 }),
+    center: { opacity: 1, x: 0 },
+    exit: (d: number) => (reduce ? { opacity: 0 } : { opacity: 0, x: d >= 0 ? 48 : -48 }),
+  };
+
+  return (
+    <>
+      <AnimatePresence mode="wait" initial={false} custom={dir}>
+        <motion.div
+          key={sel.id}
+          custom={dir}
+          variants={slide}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+          drag={reduce ? false : "x"}
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.18}
+          onDragEnd={(_, info) => {
+            if (info.offset.x < -70) go(1);
+            else if (info.offset.x > 70) go(-1);
+          }}
+          className="touch-pan-y"
+        >
+          <div className="relative h-60 overflow-hidden sm:h-72">
+            <motion.img
+              src={sel.image}
+              alt={sel.title}
+              draggable={false}
+              className="h-full w-full select-none object-cover"
+              initial={reduce ? false : { scale: 1.06 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-deep via-deep/40 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-7 text-ivory">
+              <span className="font-display text-sm font-bold text-mint">مشروع {sel.num}</span>
+              <DialogTitle className="mt-1 font-display text-3xl font-black">
+                {sel.title}
+              </DialogTitle>
+            </div>
+          </div>
+          <div className="px-7 pt-7">
+            <DialogDescription className="text-base leading-loose text-foreground/80">
+              {sel.long}
+            </DialogDescription>
+            {(sel.outcomes || sel.location) && (
+              <dl className="mt-6 grid gap-3 sm:grid-cols-2">
+                {sel.outcomes && (
+                  <div className="rounded-2xl bg-sage p-4 transition-colors hover:bg-secondary/70">
+                    <dt className="flex items-center gap-2 text-xs font-bold text-primary/70">
+                      <Sparkles className="h-4 w-4" /> المخرجات
+                    </dt>
+                    <dd className="mt-1.5 text-sm leading-relaxed text-foreground/85">
+                      {sel.outcomes}
+                    </dd>
+                  </div>
+                )}
+                {sel.location && (
+                  <div className="rounded-2xl bg-sage p-4 transition-colors hover:bg-secondary/70">
+                    <dt className="flex items-center gap-2 text-xs font-bold text-primary/70">
+                      <MapPin className="h-4 w-4" /> الموقع
+                    </dt>
+                    <dd className="mt-1.5 text-sm leading-relaxed text-foreground/85">
+                      {sel.location}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            )}
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="mx-7 mb-7 mt-7 flex items-center justify-between border-t border-border pt-5">
+        <Button
+          variant="ghost"
+          className="group rounded-full hover:bg-secondary"
+          onClick={() => go(-1)}
+        >
+          <ChevronRight className="transition-transform group-hover:translate-x-0.5" /> السابق
+        </Button>
+        <div className="flex items-center gap-1.5" role="group" aria-label="اختيار المشروع">
+          {projects.map((p, i) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => jump(i)}
+              aria-label={p.title}
+              aria-current={i === index ? "true" : undefined}
+              className="relative flex h-6 items-center justify-center px-0.5"
+            >
+              <span
+                className={cn(
+                  "block h-1.5 rounded-full transition-all duration-300",
+                  i === index ? "w-6 bg-primary" : "w-1.5 bg-primary/20 hover:bg-primary/50",
+                )}
+              />
+            </button>
+          ))}
+        </div>
+        <Button
+          variant="ghost"
+          className="group rounded-full hover:bg-secondary"
+          onClick={() => go(1)}
+        >
+          التالي <ChevronLeft className="transition-transform group-hover:-translate-x-0.5" />
+        </Button>
+      </div>
+    </>
   );
 }
 
@@ -670,7 +764,7 @@ export function Partners({ withHead = true }: { withHead?: boolean }) {
                 كن شريكًا في صناعة الأثر
               </h2>
               <p className="mt-2 text-muted-foreground">
-                تواصل مع فريق الشراكات لاستكشاف فرص التعاون مع إثمار.
+                تواصل مع فريق الشراكات لاستكشاف فرص التعاون مع إثمار
               </p>
             </div>
             <Button asChild variant="brand" size="xl">
@@ -724,46 +818,6 @@ export function Partners({ withHead = true }: { withHead?: boolean }) {
           ))}
         </ul>
       </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------ Join CTA */
-
-export function JoinCta() {
-  const [reg, setReg] = useState(false);
-  return (
-    <section className="mx-auto max-w-7xl px-5 py-24">
-      <Reveal>
-        <div className="bg-hero grain relative overflow-hidden rounded-[2.25rem] px-7 py-14 text-ivory md:px-14 md:py-16">
-          <img
-            src={logoOnDark}
-            alt=""
-            aria-hidden
-            className="pointer-events-none absolute -end-12 -top-6 w-80 opacity-[0.07] md:w-[28rem]"
-          />
-          <div className="relative grid items-center gap-8 lg:grid-cols-5">
-            <div className="lg:col-span-3">
-              <p className="text-sm font-bold text-gold">مجتمع إثمار</p>
-              <h2 className="mt-2 text-balance font-display text-3xl font-black leading-tight md:text-5xl">
-                كن جزءًا من الجيل الواعي ماليًا
-              </h2>
-              <p className="mt-4 max-w-xl text-lg text-ivory/70">
-                أكثر من 120 عضو وقائد كل ترم يصنعون الأثر في لجان إثمار.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3 lg:col-span-2 lg:justify-end">
-              <Button variant="hero" size="xl" onClick={() => setReg(true)}>
-                التسجيل
-              </Button>
-              <Button asChild variant="heroGhost" size="xl">
-                <Link to="/portal">بوابة الأعضاء</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Reveal>
-      <RegistrationDialog open={reg} onOpenChange={setReg} />
     </section>
   );
 }

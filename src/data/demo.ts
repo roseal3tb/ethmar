@@ -23,16 +23,33 @@ export function nextTier(hours: number): Tier | null {
 }
 
 export type Role = "القائدة" | "النائب" | "المستشار" | "عضو";
-// Display labels for roles (neutral wording for the directory and dashboard).
+// Role category names (used for directory slots that may be empty)
 export const roleLabels: Record<Role, string> = {
-  القائدة: "قائد/ة اللجنة",
-  النائب: "نائب/ة القائد",
-  المستشار: "المستشار/ة",
-  عضو: "عضو",
+  القائدة: "قيادة اللجنة",
+  النائب: "نيابة القيادة",
+  المستشار: "الإرشاد",
+  عضو: "الأعضاء",
 };
+
+// Gendered role label for a specific person, e.g. "قائدة اللجنة" / "قائد اللجنة"
+export function roleLabel(m: Pick<Member, "role" | "gender">) {
+  const f = m.gender === "f";
+  switch (m.role) {
+    case "القائدة":
+      return f ? "قائدة اللجنة" : "قائد اللجنة";
+    case "النائب":
+      return f ? "نائبة القائد" : "نائب القائد";
+    case "المستشار":
+      return f ? "مستشارة اللجنة" : "مستشار اللجنة";
+    default:
+      return f ? "عضوة" : "عضو";
+  }
+}
+
 export type Member = {
   id: string;
   name: string;
+  gender: "f" | "m";
   committee: string;
   role: Role;
   totalHours: number;
@@ -54,6 +71,7 @@ export const members: Member[] = [
   {
     id: "u1",
     name: "روز عبدالله العتيبي",
+    gender: "f",
     committee: "tech",
     role: "عضو",
     totalHours: 46,
@@ -62,6 +80,7 @@ export const members: Member[] = [
   {
     id: "u2",
     name: "سارة الحربي",
+    gender: "f",
     committee: "tech",
     role: "القائدة",
     totalHours: 88,
@@ -70,6 +89,7 @@ export const members: Member[] = [
   {
     id: "u3",
     name: "فيصل القحطاني",
+    gender: "m",
     committee: "tech",
     role: "النائب",
     totalHours: 61,
@@ -78,6 +98,7 @@ export const members: Member[] = [
   {
     id: "u4",
     name: "نورة الشهري",
+    gender: "f",
     committee: "tech",
     role: "المستشار",
     totalHours: 104,
@@ -86,6 +107,7 @@ export const members: Member[] = [
   {
     id: "u5",
     name: "عبدالعزيز الدوسري",
+    gender: "m",
     committee: "tech",
     role: "عضو",
     totalHours: 22,
@@ -94,6 +116,7 @@ export const members: Member[] = [
   {
     id: "u6",
     name: "لمى السبيعي",
+    gender: "f",
     committee: "media",
     role: "القائدة",
     totalHours: 92,
@@ -102,6 +125,7 @@ export const members: Member[] = [
   {
     id: "u7",
     name: "تركي المطيري",
+    gender: "m",
     committee: "media",
     role: "النائب",
     totalHours: 55,
@@ -110,6 +134,7 @@ export const members: Member[] = [
   {
     id: "u8",
     name: "ريم الزهراني",
+    gender: "f",
     committee: "media",
     role: "عضو",
     totalHours: 18,
@@ -118,6 +143,7 @@ export const members: Member[] = [
   {
     id: "u9",
     name: "خالد العنزي",
+    gender: "m",
     committee: "projects",
     role: "القائدة",
     totalHours: 97,
@@ -126,6 +152,7 @@ export const members: Member[] = [
   {
     id: "u10",
     name: "جود الغامدي",
+    gender: "f",
     committee: "projects",
     role: "عضو",
     totalHours: 41,
@@ -134,6 +161,7 @@ export const members: Member[] = [
   {
     id: "u11",
     name: "هيا الرشيد",
+    gender: "f",
     committee: "pr",
     role: "القائدة",
     totalHours: 73,
@@ -142,6 +170,7 @@ export const members: Member[] = [
   {
     id: "u12",
     name: "محمد الشمري",
+    gender: "m",
     committee: "pr",
     role: "المستشار",
     totalHours: 66,
@@ -150,6 +179,7 @@ export const members: Member[] = [
   {
     id: "u13",
     name: "دانة البقمي",
+    gender: "f",
     committee: "fincontent",
     role: "القائدة",
     totalHours: 80,
@@ -158,6 +188,7 @@ export const members: Member[] = [
   {
     id: "u14",
     name: "يوسف العمري",
+    gender: "m",
     committee: "fincontent",
     role: "عضو",
     totalHours: 29,
@@ -225,7 +256,7 @@ export const initialTasks: Task[] = [
     id: "t2",
     title: "تصميم قوالب منشورات سفراء إثمار",
     committee: "media",
-    description: "إعداد ٥ قوالب بصرية لحملة الترم.",
+    description: "إعداد ٥ قوالب بصرية لحملة الترم",
     assignedAt: "2026-11-10",
     dueAt: "2026-11-24",
     estHours: 6,
@@ -237,7 +268,7 @@ export const initialTasks: Task[] = [
     id: "t3",
     title: "تنسيق زيارة إثرائية",
     committee: "projects",
-    description: "التواصل مع الجهة المستضيفة وجدولة الزيارة.",
+    description: "التواصل مع الجهة المستضيفة وجدولة الزيارة",
     assignedAt: "2026-11-12",
     dueAt: "2026-12-05",
     estHours: 8,
@@ -249,7 +280,7 @@ export const initialTasks: Task[] = [
     id: "t4",
     title: "مراجعة محتوى ورشة الميزانية",
     committee: "fincontent",
-    description: "تدقيق شرائح ورشة الميزانية الشخصية.",
+    description: "تدقيق شرائح ورشة الميزانية الشخصية",
     assignedAt: "2026-10-05",
     dueAt: "2026-10-20",
     estHours: 4,
@@ -261,7 +292,7 @@ export const initialTasks: Task[] = [
     id: "t5",
     title: "إعداد تقرير أثر شهر أكتوبر",
     committee: "tech",
-    description: "تجميع أرقام المستفيدين والمشاهدات.",
+    description: "تجميع أرقام المستفيدين والمشاهدات",
     assignedAt: "2026-10-25",
     dueAt: "2026-11-05",
     estHours: 5,
@@ -284,28 +315,28 @@ export const labs: Lab[] = [
     id: "l1",
     title: "مختبر التحليل المالي",
     kind: "تعلم",
-    description: "تمارين قصيرة لقراءة القوائم المالية.",
+    description: "تمارين قصيرة لقراءة القوائم المالية",
     status: "قريبًا",
   },
   {
     id: "l2",
     title: "مختبر المحتوى",
     kind: "تطوير",
-    description: "مساحة لتجربة أفكار المحتوى التوعوي ومراجعتها.",
+    description: "مساحة لتجربة أفكار المحتوى التوعوي ومراجعتها",
     status: "قريبًا",
   },
   {
     id: "l3",
     title: "مختبر التقنية",
     kind: "تجارب تقنية",
-    description: "تجارب أدوات رقمية تخدم أعمال المبادرة.",
+    description: "تجارب أدوات رقمية تخدم أعمال المبادرة",
     status: "قريبًا",
   },
   {
     id: "l4",
     title: "مكتبة الموارد",
     kind: "موارد داخلية",
-    description: "أدلة وقوالب داخلية للجان.",
+    description: "أدلة وقوالب داخلية للجان",
     status: "قريبًا",
   },
 ];

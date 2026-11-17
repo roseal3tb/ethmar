@@ -4,15 +4,7 @@ import { Info, Medal } from "lucide-react";
 import { committeeName, members, months, tiers, type Member } from "@/data/demo";
 import { useDemoAuth } from "@/lib/demo-auth";
 import { cn } from "@/lib/utils";
-import {
-  MemberAvatar,
-  PageHeader,
-  Panel,
-  SampleBadge,
-  TierBadge,
-  rankMembers,
-  tierStyle,
-} from "./shared";
+import { MemberAvatar, PageHeader, Panel, TierBadge, rankMembers, tierStyle } from "./shared";
 
 const podiumStyle = [
   { h: "h-40 md:h-48", ring: "ring-gold", label: "الأول", medal: "tier-gold text-deep" },
@@ -45,7 +37,7 @@ export function LeaderboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="لوحة الصدارة" text="ترتيب الأعضاء حسب الساعات التطوعية الشهرية.">
+      <PageHeader title="لوحة الصدارة" text="ترتيب الأعضاء حسب الساعات التطوعية الشهرية">
         <div
           role="radiogroup"
           aria-label="اختيار الشهر"
@@ -59,22 +51,29 @@ export function LeaderboardPage() {
               aria-checked={month === m.id}
               onClick={() => setMonth(m.id)}
               className={cn(
-                "rounded-full px-3.5 py-2 text-sm font-bold transition-colors sm:px-4",
+                "relative rounded-full px-3.5 py-2 text-sm font-bold transition-colors duration-300 sm:px-4",
                 month === m.id
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground/70 hover:bg-muted",
+                  ? "text-primary-foreground"
+                  : "text-foreground/70 hover:bg-muted hover:text-foreground",
               )}
             >
-              {m.label.split(" ")[0]}
+              {month === m.id && (
+                <motion.span
+                  layoutId={reduce ? undefined : "month-pill"}
+                  className="absolute inset-0 rounded-full bg-primary"
+                  transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                />
+              )}
+              <span className="relative">{m.label.split(" ")[0]}</span>
             </button>
           ))}
         </div>
       </PageHeader>
 
-      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        <SampleBadge>بيانات نموذجية للعرض</SampleBadge>
-        الترتيب والمستويات أدناه أمثلة توضيحية وليست سجلات أو سياسات معتمدة.
-      </div>
+      <p className="-mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="h-1.5 w-1.5 rounded-full bg-gold" aria-hidden />
+        بيانات نموذجية للعرض، وليست سجلات أو سياسات معتمدة
+      </p>
 
       {/* Podium */}
       <section
@@ -205,7 +204,7 @@ export function LeaderboardPage() {
         </Panel>
 
         {/* Tiers */}
-        <Panel title="مستويات العضوية" action={<SampleBadge>تجريبية</SampleBadge>}>
+        <Panel title="مستويات العضوية">
           <ul className="space-y-2.5">
             {[...tiers].reverse().map((t) => {
               const Icon = tierStyle[t.id].icon;
@@ -213,11 +212,11 @@ export function LeaderboardPage() {
               return (
                 <li
                   key={t.id}
-                  className="flex items-center gap-3 rounded-2xl border border-border p-3"
+                  className="group flex items-center gap-3 rounded-2xl border border-border/70 p-3 transition-all duration-300 hover:-translate-x-0.5 hover:border-primary/25 hover:bg-sage"
                 >
                   <span
                     className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm",
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform duration-300 group-hover:scale-110",
                       tierStyle[t.id].cls,
                       tierStyle[t.id].text,
                     )}
@@ -238,8 +237,8 @@ export function LeaderboardPage() {
           </ul>
           <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            العتبات قيم افتراضية قابلة للتعديل، ولا تمثل سياسة معتمدة من إثمار. يُحتسب المستوى من
-            إجمالي الساعات.
+            العتبات قيم افتراضية قابلة للتعديل، ولا تمثل سياسة معتمدة من إثمار، يُحتسب المستوى من
+            إجمالي الساعات
           </p>
         </Panel>
       </div>
@@ -262,11 +261,11 @@ function Row({
 }) {
   const hours = m.monthly[month] ?? 0;
   const cell = cn(
-    "px-2 py-2.5 first:rounded-s-2xl last:rounded-e-2xl",
-    isMe ? "bg-secondary/70" : "bg-[oklch(0.985_0.006_100)]",
+    "px-2 py-2.5 transition-colors duration-200 first:rounded-s-2xl last:rounded-e-2xl",
+    isMe ? "bg-secondary/70" : "bg-[oklch(0.985_0.006_100)] group-hover:bg-sage",
   );
   return (
-    <tr aria-current={isMe ? "true" : undefined}>
+    <tr aria-current={isMe ? "true" : undefined} className="group">
       <td className={cell}>
         {rank <= 3 ? (
           <span

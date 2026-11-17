@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   CalendarClock,
   CalendarPlus,
@@ -30,13 +31,14 @@ import {
 } from "./shared";
 
 const filters: { id: TaskStatus; empty: string; icon: typeof Inbox }[] = [
-  { id: "new", empty: "لا توجد مهام جديدة حاليًا. ستظهر هنا المهام المسندة إليك.", icon: Inbox },
-  { id: "active", empty: "لا توجد مهام نشطة. ابدأ مهمة جديدة لتظهر هنا.", icon: PlayCircle },
-  { id: "done", empty: "لم تُكمل أي مهمة بعد في هذه القائمة.", icon: CheckCircle2 },
+  { id: "new", empty: "لا توجد مهام جديدة حاليًا، ستظهر هنا المهام المسندة إليك", icon: Inbox },
+  { id: "active", empty: "لا توجد مهام نشطة، ابدأ مهمة جديدة لتظهر هنا", icon: PlayCircle },
+  { id: "done", empty: "لم تُكمل أي مهمة بعد في هذه القائمة", icon: CheckCircle2 },
 ];
 
 export function TasksPage() {
   const { tasks, setTaskStatus } = useDemoAuth();
+  const reduce = useReducedMotion();
   const [filter, setFilter] = useState<TaskStatus>("active");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = tasks.find((t) => t.id === selectedId) ?? null;
@@ -52,7 +54,7 @@ export function TasksPage() {
 
   return (
     <div>
-      <PageHeader title="المهام" text="تابع مهامك، وحدّث نسبة الإنجاز وحالة كل مهمة." />
+      <PageHeader title="المهام" text="تابع مهامك، وحدّث نسبة الإنجاز وحالة كل مهمة" />
 
       <div
         role="tablist"
@@ -71,16 +73,23 @@ export function TasksPage() {
               aria-controls="tasks-panel"
               onClick={() => setFilter(x.id)}
               className={cn(
-                "flex items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-bold transition-colors",
+                "relative flex items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-bold transition-colors duration-300",
                 on
-                  ? "bg-primary text-primary-foreground shadow"
-                  : "text-foreground/70 hover:bg-muted",
+                  ? "text-primary-foreground"
+                  : "text-foreground/70 hover:bg-muted hover:text-foreground",
               )}
             >
-              {statusMeta[x.id].label}
+              {on && (
+                <motion.span
+                  layoutId={reduce ? undefined : "tasks-tab"}
+                  className="absolute inset-0 rounded-2xl bg-primary shadow"
+                  transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                />
+              )}
+              <span className="relative">{statusMeta[x.id].label}</span>
               <span
                 className={cn(
-                  "min-w-6 rounded-full px-1.5 text-xs",
+                  "relative min-w-6 rounded-full px-1.5 text-xs transition-colors",
                   on ? "bg-ivory/20" : "bg-muted",
                 )}
               >
@@ -93,7 +102,7 @@ export function TasksPage() {
 
       <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        الساعات الموثقة تُعتمد بشكل منفصل، وإكمال المهمة لا يوثّق الساعات تلقائيًا.
+        الساعات الموثقة تُعتمد بشكل منفصل، وإكمال المهمة لا يوثّق الساعات تلقائيًا
       </p>
 
       <div id="tasks-panel" role="tabpanel" className="mt-6">
@@ -104,69 +113,86 @@ export function TasksPage() {
             text={f.empty}
           />
         ) : (
-          <ul className="grid gap-4 md:grid-cols-2">
-            {visible.map((t) => {
-              const due = dueLabel(t.dueAt, t.status);
-              return (
-                <li
-                  key={t.id}
-                  className="group relative flex flex-col rounded-3xl border border-border bg-card p-5 shadow-card transition hover:-translate-y-0.5 hover:border-primary/25"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <CommitteeChip id={t.committee} />
-                    <StatusBadge status={t.status} />
-                  </div>
-                  <h3 className="mt-3 font-display text-lg font-extrabold leading-snug text-primary">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(t.id)}
-                      className="text-start after:absolute after:inset-0 after:rounded-3xl focus-visible:outline-none"
-                    >
-                      {t.title}
-                    </button>
-                  </h3>
-                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.description}</p>
-                  <div className="mt-4 flex items-center gap-3">
-                    <ProgressBar value={t.progress} label={`تقدم ${t.title}`} />
-                    <span
-                      className="w-10 shrink-0 text-end text-xs font-bold text-primary"
-                      dir="ltr"
-                    >
-                      {t.progress}%
-                    </span>
-                  </div>
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4 text-xs">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <CalendarClock className="h-3.5 w-3.5" />
-                      {formatShortDate(t.dueAt)} ·{" "}
-                      <span
-                        className={cn(
-                          due.tone === "danger" && "font-bold text-destructive",
-                          due.tone === "warn" && "font-bold text-[oklch(0.5_0.1_65)]",
-                        )}
+          <motion.ul layout={!reduce} className="grid gap-4 md:grid-cols-2">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {visible.map((t, i) => {
+                const due = dueLabel(t.dueAt, t.status);
+                return (
+                  <motion.li
+                    key={t.id}
+                    layout={!reduce}
+                    initial={reduce ? false : { opacity: 0, y: 14, scale: 0.98 }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      scale: 1,
+                      transition: { duration: 0.35, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] },
+                    }}
+                    exit={
+                      reduce
+                        ? undefined
+                        : { opacity: 0, scale: 0.96, transition: { duration: 0.2 } }
+                    }
+                    className="group relative flex flex-col rounded-3xl border border-border/70 bg-card p-5 shadow-card transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-soft"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <CommitteeChip id={t.committee} />
+                      <StatusBadge status={t.status} />
+                    </div>
+                    <h3 className="mt-3 font-display text-lg font-extrabold leading-snug text-primary">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedId(t.id)}
+                        className="text-start after:absolute after:inset-0 after:rounded-3xl focus-visible:outline-none"
                       >
-                        {due.text}
+                        {t.title}
+                      </button>
+                    </h3>
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                      {t.description}
+                    </p>
+                    <div className="mt-4 flex items-center gap-3">
+                      <ProgressBar value={t.progress} label={`تقدم ${t.title}`} />
+                      <span
+                        className="w-10 shrink-0 text-end text-xs font-bold text-primary"
+                        dir="ltr"
+                      >
+                        {t.progress}%
                       </span>
-                    </span>
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                      <b className="text-foreground">{t.verifiedHours}</b>/{t.estHours} ساعة موثقة
-                    </span>
-                  </div>
-                  {t.status === "new" && (
-                    <Button
-                      size="sm"
-                      variant="brand"
-                      className="relative z-10 mt-4 self-start"
-                      onClick={() => start(t)}
-                    >
-                      <PlayCircle /> بدء المهمة
-                    </Button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4 text-xs">
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <CalendarClock className="h-3.5 w-3.5" />
+                        {formatShortDate(t.dueAt)} ·{" "}
+                        <span
+                          className={cn(
+                            due.tone === "danger" && "font-bold text-destructive",
+                            due.tone === "warn" && "font-bold text-[oklch(0.5_0.1_65)]",
+                          )}
+                        >
+                          {due.text}
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                        <b className="text-foreground">{t.verifiedHours}</b>/{t.estHours} ساعة موثقة
+                      </span>
+                    </div>
+                    {t.status === "new" && (
+                      <Button
+                        size="sm"
+                        variant="brand"
+                        className="relative z-10 mt-4 self-start"
+                        onClick={() => start(t)}
+                      >
+                        <PlayCircle /> بدء المهمة
+                      </Button>
+                    )}
+                  </motion.li>
+                );
+              })}
+            </AnimatePresence>
+          </motion.ul>
         )}
       </div>
 
@@ -275,7 +301,7 @@ function TaskDialog({ task, onClose }: { task: Task | null; onClose: () => void 
                       toast.success("تم تحديث نسبة الإنجاز", {
                         description:
                           draft >= 100
-                            ? "اكتملت المهمة — توثيق الساعات يتم بشكل منفصل."
+                            ? "اكتملت المهمة — توثيق الساعات يتم بشكل منفصل"
                             : `${task.title}: ${draft}%`,
                       });
                     }}
@@ -288,7 +314,7 @@ function TaskDialog({ task, onClose }: { task: Task | null; onClose: () => void 
               <div className="flex items-start gap-2.5 rounded-2xl bg-sage p-4 text-xs leading-relaxed text-foreground/75">
                 <Clock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 نسبة الإنجاز وحالة المهمة يحدّثها العضو، أما الساعات الموثقة فتعتمد بشكل مستقل ولا
-                تتغير عند إكمال المهمة.
+                تتغير عند إكمال المهمة
               </div>
 
               <div className="flex flex-wrap gap-2 border-t border-border pt-5">
@@ -309,7 +335,7 @@ function TaskDialog({ task, onClose }: { task: Task | null; onClose: () => void 
                     onClick={() => {
                       setTaskStatus(task.id, "done");
                       toast.success("تم تعليم المهمة كمكتملة", {
-                        description: "توثيق الساعات التطوعية يتم بشكل منفصل.",
+                        description: "توثيق الساعات التطوعية يتم بشكل منفصل",
                       });
                     }}
                   >

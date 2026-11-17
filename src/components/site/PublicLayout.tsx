@@ -5,12 +5,15 @@ import logoOnDark from "@/assets/ethmar-logo-light.png";
 import { SiteHeader } from "./SiteHeader";
 import { SiteFooter } from "./SiteFooter";
 import { Reveal } from "./Reveal";
+import { PageTransition } from "./PageTransition";
 
 export function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <main id="main">{children}</main>
+      <main id="main">
+        <PageTransition>{children}</PageTransition>
+      </main>
       <SiteFooter />
     </div>
   );

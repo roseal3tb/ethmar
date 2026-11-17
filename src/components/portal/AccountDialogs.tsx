@@ -96,7 +96,7 @@ export function ProfileDialog({
     updateProfile({ displayName: name.trim(), major: major.trim(), bio: bio.trim() });
     onOpenChange(false);
     toast.success("تم حفظ التعديلات لهذه الجلسة", {
-      description: "نسخة تجريبية: لم يتم تحديث أي سجل عضوية فعلي.",
+      description: "نسخة تجريبية: لم يتم تحديث أي سجل عضوية فعلي",
     });
   };
 
@@ -117,11 +117,11 @@ export function ProfileDialog({
           تعديل الملف الشخصي
         </DialogTitle>
         <DialogDescription className="-mt-2">
-          حدّث طريقة ظهورك داخل البوابة التجريبية.
+          حدّث طريقة ظهورك داخل البوابة التجريبية
         </DialogDescription>
         <DemoNotice>
-          التعديلات تُحفظ مؤقتًا في هذه الجلسة فقط ولا تُرسل إلى أي نظام. سجل العضوية الرسمي لا
-          يتغير.
+          التعديلات تُحفظ مؤقتًا في هذه الجلسة فقط ولا تُرسل إلى أي نظام، سجل العضوية الرسمي لا
+          يتغير
         </DemoNotice>
         <form onSubmit={submit} noValidate className="space-y-4">
           <FormField id={`${uid}-name`} label="الاسم المعروض" error={errors.displayName}>
@@ -235,7 +235,7 @@ export function PasswordDialog({
       onOpenChange(false);
       // Deliberately does NOT change anything: there is no backend.
       toast.info("تم التحقق من النموذج — لم تتغير كلمة المرور", {
-        description: "هذه واجهة تجريبية؛ تبقى كلمة مرور الحساب التجريبي كما هي.",
+        description: "هذه واجهة تجريبية؛ تبقى كلمة مرور الحساب التجريبي كما هي",
       });
     }, 600);
   };
@@ -270,10 +270,10 @@ export function PasswordDialog({
           تغيير كلمة المرور
         </DialogTitle>
         <DialogDescription className="-mt-2">
-          8 أحرف على الأقل، تجمع بين الحروف والأرقام.
+          8 أحرف على الأقل، تجمع بين الحروف والأرقام
         </DialogDescription>
         <DemoNotice>
-          واجهة تجريبية لعرض التجربة فقط: لن يتم تغيير كلمة المرور أو حفظها في أي مكان.
+          واجهة تجريبية لعرض التجربة فقط: لن يتم تغيير كلمة المرور أو حفظها في أي مكان
         </DemoNotice>
         <form onSubmit={submit} noValidate className="space-y-4">
           <FormField id={`${uid}-cur`} label="كلمة المرور الحالية" error={errors.current}>

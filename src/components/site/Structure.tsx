@@ -1,6 +1,4 @@
-import { Link } from "@tanstack/react-router";
 import {
-  ArrowUpLeft,
   BadgeCheck,
   ChevronLeft,
   Cpu,
@@ -12,11 +10,10 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { affiliation, committees, leadership, type Committee, type Person } from "@/data/site";
 import { cn } from "@/lib/utils";
 import { Reveal } from "./Reveal";
-import { SectionHead } from "./Sections";
+import logoOnLight from "@/assets/ethmar-logo.png";
 
 const committeeIcons: Record<string, LucideIcon> = {
   pr: Handshake,
@@ -27,6 +24,12 @@ const committeeIcons: Record<string, LucideIcon> = {
   tech: Cpu,
   projects: FolderKanban,
 };
+
+const memberCount = committees.reduce(
+  (n, c) =>
+    n + (c.members?.length ?? 0) + c.teams.reduce((m, t) => m + (t.members?.length ?? 0), 0),
+  0,
+);
 
 const leaderCount =
   1 +
@@ -51,8 +54,8 @@ function PersonCard({
     size === "lg"
       ? "w-[13.5rem] sm:w-60"
       : size === "md"
-        ? "w-[10.5rem] sm:w-44"
-        : "w-[8.75rem] sm:w-[9.5rem]";
+        ? "w-full sm:w-44"
+        : "w-full sm:w-[9.5rem]";
   return (
     <article className={cn("group", w)}>
       <div
@@ -122,15 +125,49 @@ function CardRow({
   className?: string;
 }) {
   return (
-    <ul className={cn("flex flex-wrap items-stretch justify-center gap-3 sm:gap-4", className)}>
-      {people.map((p, i) => (
-        <li key={p.name} className="flex">
-          <Reveal delay={Math.min(i, 8) * 0.05} className="flex">
-            <PersonCard person={p} size={size} />
-          </Reveal>
-        </li>
-      ))}
+    // Mobile: two cards per row (a lone last card is centred). sm+: centred wrapping row
+    <ul
+      className={cn(
+        "grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-stretch sm:justify-center sm:gap-4",
+        className,
+      )}
+    >
+      {people.map((p, i) => {
+        const lone = people.length % 2 === 1 && i === people.length - 1;
+        return (
+          <li key={p.name} className={cn("flex justify-center", lone && "col-span-2")}>
+            <Reveal
+              delay={Math.min(i, 8) * 0.05}
+              className={cn("flex", lone ? "w-[calc(50%-0.375rem)] sm:w-auto" : "w-full sm:w-auto")}
+            >
+              <PersonCard person={p} size={size} />
+            </Reveal>
+          </li>
+        );
+      })}
     </ul>
+  );
+}
+
+function MemberList({ names, title = "الأعضاء" }: { names: string[]; title?: string }) {
+  return (
+    <div className="mt-5">
+      <p className="mb-3 flex items-center justify-center gap-2 text-xs font-bold text-muted-foreground">
+        {title}
+        <span className="rounded-full bg-card px-2 py-0.5 text-primary shadow-sm">
+          {names.length}
+        </span>
+      </p>
+      <ul className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
+        {names.map((n, i) => (
+          <li key={`${n}-${i}`}>
+            <span className="inline-flex cursor-default items-center rounded-full border border-border bg-card px-3 py-1.5 text-[13px] text-foreground/85 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground">
+              {n}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -172,7 +209,7 @@ function CommitteeBlock({ committee: c }: { committee: Committee }) {
             <div
               key={t.name}
               className={cn(
-                "rounded-[1.75rem] border border-dashed border-primary/15 bg-sage/60 p-5",
+                "rounded-[1.75rem] border border-primary/10 bg-sage/60 p-4 transition-colors hover:border-primary/20 sm:p-5",
                 c.teams.length === 1 && "mx-auto w-full max-w-5xl",
               )}
             >
@@ -183,8 +220,15 @@ function CommitteeBlock({ committee: c }: { committee: Committee }) {
                 </span>
               </p>
               <CardRow people={t.people} size="sm" />
+              {t.members && t.members.length > 0 && <MemberList names={t.members} />}
             </div>
           ))}
+        </div>
+      )}
+
+      {c.members && c.members.length > 0 && (
+        <div className="mx-auto mt-8 max-w-4xl rounded-[1.75rem] border border-primary/10 bg-sage/60 p-5 transition-colors hover:border-primary/20">
+          <MemberList names={c.members} title="أعضاء اللجنة" />
         </div>
       )}
     </section>
@@ -204,21 +248,23 @@ export function StructureTree() {
             aria-label="الجهة المشرفة"
             className="mx-auto flex max-w-fit flex-wrap items-center justify-center gap-x-1.5 gap-y-2 rounded-full border border-border bg-card px-3 py-2 text-xs text-muted-foreground shadow-card sm:text-sm"
           >
-            {affiliation.map((a, i) => (
+            {affiliation.map((a) => (
               <li key={a} className="flex items-center gap-1.5">
-                <span
-                  className={cn(
-                    "rounded-full px-3 py-1",
-                    i === affiliation.length - 1 && "bg-secondary font-bold text-primary",
-                  )}
-                >
-                  {a}
-                </span>
-                {i < affiliation.length - 1 && (
-                  <ChevronLeft className="h-3.5 w-3.5 text-gold" aria-hidden />
-                )}
+                <span className="rounded-full px-3 py-1">{a}</span>
+                <ChevronLeft className="h-3.5 w-3.5 text-gold" aria-hidden />
               </li>
             ))}
+            <li className="flex items-center">
+              <span className="flex items-center rounded-full bg-secondary px-4 py-1.5">
+                <img
+                  src={logoOnLight}
+                  alt="مبادرة إثمار"
+                  className="h-6 w-auto sm:h-7"
+                  width={720}
+                  height={267}
+                />
+              </span>
+            </li>
           </ol>
         </Reveal>
 
@@ -234,17 +280,12 @@ export function StructureTree() {
             <PersonCard person={president} size="lg" featured />
           </Reveal>
           <span aria-hidden className="h-8 w-px bg-primary/30" />
-          <div className="relative flex flex-wrap justify-center gap-3 pt-6 sm:gap-4">
-            <span
-              aria-hidden
-              className="absolute inset-x-[25%] top-0 hidden h-px bg-primary/30 sm:block"
-            />
+          {/* Vice presidents: always side by side, also on mobile */}
+          <div className="relative grid w-full max-w-[22rem] grid-cols-2 gap-3 pt-6 sm:flex sm:w-auto sm:max-w-none sm:gap-4">
+            <span aria-hidden className="absolute inset-x-[25%] top-0 h-px bg-primary/30" />
             {vicePresidents.map((p, i) => (
-              <Reveal key={p.name} delay={0.1 + i * 0.08} className="relative">
-                <span
-                  aria-hidden
-                  className="absolute -top-6 left-1/2 hidden h-6 w-px bg-primary/30 sm:block"
-                />
+              <Reveal key={p.name} delay={0.1 + i * 0.08} className="relative flex">
+                <span aria-hidden className="absolute -top-6 left-1/2 h-6 w-px bg-primary/30" />
                 <PersonCard person={p} size="md" />
               </Reveal>
             ))}
@@ -252,13 +293,14 @@ export function StructureTree() {
         </div>
 
         <Reveal>
-          <dl className="mx-auto mt-14 grid max-w-3xl grid-cols-3 divide-x divide-border overflow-hidden rounded-3xl border border-border bg-card text-center shadow-card">
+          <dl className="mx-auto mt-14 grid max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-3xl border border-border bg-border text-center shadow-card sm:grid-cols-4">
             {[
               { k: "لجان", v: committees.length },
               { k: "فرق عمل", v: committees.reduce((n, c) => n + c.teams.length, 0) },
               { k: "قائد وقائدة", v: leaderCount },
+              { k: "عضو وعضوة", v: memberCount },
             ].map((s) => (
-              <div key={s.k} className="px-3 py-5">
+              <div key={s.k} className="bg-card px-3 py-5 transition-colors hover:bg-sage">
                 <dt className="text-xs text-muted-foreground sm:text-sm">{s.k}</dt>
                 <dd className="mt-1 font-display text-3xl font-black text-primary">{s.v}</dd>
               </div>
@@ -299,65 +341,5 @@ export function StructureTree() {
         ))}
       </div>
     </>
-  );
-}
-
-/* ---------------------------------------------------------------- Teaser */
-
-export function StructureTeaser() {
-  const { president, vicePresidents } = leadership;
-  return (
-    <section className="mx-auto max-w-7xl px-5 py-20 md:py-24">
-      <div className="bg-sage-wash relative overflow-hidden rounded-[2.25rem] border border-primary/10 p-7 md:p-12">
-        <div className="grid items-center gap-10 lg:grid-cols-12">
-          <div className="lg:col-span-5">
-            <Reveal>
-              <SectionHead eyebrow="الهيكلة" title="الأشخاص خلف إثمار" />
-            </Reveal>
-            <Reveal delay={0.1}>
-              <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-                قيادة واحدة و{committees.length} لجان تعمل بتكامل لصناعة الأثر، تحت مظلة برنامج
-                الشراكة الطلابية.
-              </p>
-              <Button asChild variant="brand" size="xl" className="mt-7">
-                <Link to="/structure">
-                  استعرض الهيكلة كاملة <ArrowUpLeft />
-                </Link>
-              </Button>
-            </Reveal>
-          </div>
-          <div className="lg:col-span-7">
-            <Reveal delay={0.1}>
-              <div className="flex flex-col items-center">
-                <PersonCard person={president} size="lg" featured />
-                <span aria-hidden className="h-6 w-px bg-primary/30" />
-                <div className="flex flex-wrap justify-center gap-3">
-                  {vicePresidents.map((p) => (
-                    <PersonCard key={p.name} person={p} size="md" />
-                  ))}
-                </div>
-                <ul className="mt-6 flex flex-wrap justify-center gap-2">
-                  {committees.map((c) => {
-                    const Icon = committeeIcons[c.id] ?? Users;
-                    return (
-                      <li key={c.id}>
-                        <Link
-                          to="/structure"
-                          hash={c.id}
-                          className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground/75 transition hover:border-primary/30 hover:text-primary"
-                        >
-                          <Icon className="h-3.5 w-3.5 text-primary" aria-hidden />
-                          {c.name}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </div>
-    </section>
   );
 }

@@ -5,8 +5,18 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "./Wordmark";
 import { RegistrationDialog } from "./RegistrationDialog";
-import { contact, siteNav } from "@/data/site";
+import { SocialLinks } from "./SocialIcons";
 import { cn } from "@/lib/utils";
+
+// Header items, in order: الرئيسية · التسجيل · مثمرينا (+ بوابة الأعضاء button)
+type Item =
+  | { kind: "link"; to: "/" | "/structure"; label: string }
+  | { kind: "register"; label: string };
+const items: Item[] = [
+  { kind: "link", to: "/", label: "الرئيسية" },
+  { kind: "register", label: "التسجيل" },
+  { kind: "link", to: "/structure", label: "مثمرينا" },
+];
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
@@ -21,9 +31,9 @@ export function SiteHeader() {
     const onScroll = () => {
       const y = window.scrollY;
       setScrolled(y > 20);
-      // Hide while scrolling down past the hero, reveal on any upward scroll.
-      setHidden(y > 480 && y > last + 4);
-      if (y < last - 4 || y <= 480) setHidden(false);
+      // Hide while scrolling down past the hero, reveal on any upward scroll
+      if (y > 480 && y > last + 4) setHidden(true);
+      else if (y < last - 4 || y <= 480) setHidden(false);
       last = y;
     };
     onScroll();
@@ -31,7 +41,7 @@ export function SiteHeader() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close the mobile menu on navigation, lock page scroll while it is open, close on Escape.
+  // Close the mobile menu on navigation; lock page scroll while it is open; Escape closes it
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
     if (!open) return;
@@ -64,24 +74,40 @@ export function SiteHeader() {
         تخطَّ إلى المحتوى
       </a>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5">
-        <Link to="/" aria-label="إثمار — الرئيسية" className="shrink-0 rounded-lg">
+        <Link
+          to="/"
+          aria-label="إثمار — الرئيسية"
+          className="shrink-0 rounded-lg transition-opacity hover:opacity-85"
+        >
           <Wordmark size={scrolled ? "sm" : "md"} />
         </Link>
 
         <nav
           aria-label="القائمة الرئيسية"
-          className="hidden items-center rounded-full border border-ivory/10 bg-ivory/[0.04] p-1 lg:flex"
+          className="hidden items-center rounded-full border border-ivory/10 bg-ivory/[0.04] p-1 md:flex"
         >
-          {siteNav.map((n) => {
-            const active = isActive(n.to);
+          {items.map((it) => {
+            if (it.kind === "register") {
+              return (
+                <button
+                  key="register"
+                  type="button"
+                  onClick={() => setReg(true)}
+                  className="relative rounded-full px-5 py-2 text-sm font-medium text-ivory/75 transition-colors hover:bg-ivory/[0.07] hover:text-ivory"
+                >
+                  {it.label}
+                </button>
+              );
+            }
+            const active = isActive(it.to);
             return (
               <Link
-                key={n.to}
-                to={n.to}
+                key={it.to}
+                to={it.to}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                  active ? "text-deep" : "text-ivory/75 hover:text-ivory",
+                  "relative rounded-full px-5 py-2 text-sm font-medium transition-colors",
+                  active ? "text-deep" : "text-ivory/75 hover:bg-ivory/[0.07] hover:text-ivory",
                 )}
               >
                 {active && (
@@ -91,28 +117,22 @@ export function SiteHeader() {
                     transition={{ type: "spring", stiffness: 380, damping: 32 }}
                   />
                 )}
-                <span className="relative">{n.label}</span>
+                <span className="relative">{it.label}</span>
               </Link>
             );
           })}
-          <button
-            type="button"
-            onClick={() => setReg(true)}
-            className="rounded-full px-4 py-2 text-sm font-medium text-ivory/75 transition-colors hover:text-ivory"
-          >
-            التسجيل
-          </button>
         </nav>
 
         <div className="flex items-center gap-2">
-          <Button asChild variant="hero" className="hidden h-10 px-5 sm:inline-flex">
+          <Button asChild variant="hero" className="group hidden h-10 px-5 sm:inline-flex">
             <Link to="/portal">
-              بوابة الأعضاء <ArrowUpLeft />
+              بوابة الأعضاء
+              <ArrowUpLeft className="transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:-translate-y-0.5" />
             </Link>
           </Button>
           <button
             type="button"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-ivory/15 text-ivory transition hover:bg-ivory/10 lg:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-ivory/15 text-ivory transition hover:bg-ivory/10 md:hidden"
             aria-label={open ? "إغلاق القائمة" : "فتح القائمة"}
             aria-expanded={open}
             aria-controls="mobile-nav"
@@ -127,52 +147,61 @@ export function SiteHeader() {
         {open && (
           <motion.div
             id="mobile-nav"
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25 }}
-            className="mx-4 mt-3 overflow-hidden rounded-3xl border border-ivory/10 bg-deep/95 p-3 shadow-2xl backdrop-blur-xl lg:hidden"
+            initial={{ opacity: 0, y: -12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.98 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-4 mt-3 overflow-hidden rounded-3xl border border-ivory/10 bg-deep/95 p-3 shadow-2xl backdrop-blur-xl md:hidden"
           >
             <nav aria-label="القائمة الرئيسية (الجوال)" className="grid gap-1">
-              {siteNav.map((n) => {
-                const active = isActive(n.to);
-                return (
-                  <Link
-                    key={n.to}
-                    to={n.to}
-                    onClick={() => setOpen(false)}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "flex items-center justify-between rounded-2xl px-4 py-3.5 text-base font-medium transition",
-                      active ? "bg-ivory/10 text-ivory" : "text-ivory/80 hover:bg-ivory/5",
-                    )}
-                  >
-                    {n.label}
-                    {active && <span className="h-2 w-2 rounded-full bg-mint" />}
-                  </Link>
-                );
-              })}
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  setReg(true);
-                }}
-                className="rounded-2xl px-4 py-3.5 text-start text-base font-medium text-ivory/80 hover:bg-ivory/5"
-              >
-                التسجيل
-              </button>
+              {items.map((it, i) => (
+                <motion.div
+                  key={it.label}
+                  initial={reduce ? false : { opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.04 * i, duration: 0.25 }}
+                >
+                  {it.kind === "register" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        setReg(true);
+                      }}
+                      className="w-full rounded-2xl px-4 py-3.5 text-start text-base font-medium text-ivory/80 transition hover:bg-ivory/5"
+                    >
+                      {it.label}
+                    </button>
+                  ) : (
+                    <Link
+                      to={it.to}
+                      onClick={() => setOpen(false)}
+                      aria-current={isActive(it.to) ? "page" : undefined}
+                      className={cn(
+                        "flex items-center justify-between rounded-2xl px-4 py-3.5 text-base font-medium transition",
+                        isActive(it.to)
+                          ? "bg-ivory/10 text-ivory"
+                          : "text-ivory/80 hover:bg-ivory/5",
+                      )}
+                    >
+                      {it.label}
+                      {isActive(it.to) && <span className="h-2 w-2 rounded-full bg-mint" />}
+                    </Link>
+                  )}
+                </motion.div>
+              ))}
               <Link
                 to="/portal"
                 onClick={() => setOpen(false)}
-                className="mt-2 flex items-center justify-center gap-2 rounded-2xl bg-mint px-4 py-3.5 font-bold text-deep"
+                className="mt-2 flex items-center justify-center gap-2 rounded-2xl bg-mint px-4 py-3.5 font-bold text-deep transition hover:bg-ivory"
               >
                 بوابة الأعضاء <ArrowUpLeft className="h-4 w-4" />
               </Link>
             </nav>
-            <p className="mt-3 border-t border-ivory/10 px-4 pt-3 text-xs text-ivory/50">
-              <span dir="ltr">{contact.handle}</span> · مبادرة طلابية في جامعة الملك سعود
-            </p>
+            <div className="mt-3 flex items-center justify-between border-t border-ivory/10 px-2 pt-3">
+              <span className="text-xs text-ivory/50">تابعنا</span>
+              <SocialLinks />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

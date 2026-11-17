@@ -48,11 +48,11 @@ export function LoginScreen() {
       const ok = login(id, password, remember);
       setLoading(false);
       if (!ok) {
-        setErrors({ form: "بيانات الدخول غير صحيحة. تأكد من البريد أو رقم العضوية وكلمة المرور." });
-        toast.error("تعذّر تسجيل الدخول", { description: "تحقق من بياناتك وحاول مرة أخرى." });
+        setErrors({ form: "بيانات الدخول غير صحيحة، تأكد من البريد أو رقم العضوية وكلمة المرور" });
+        toast.error("تعذّر تسجيل الدخول", { description: "تحقق من بياناتك وحاول مرة أخرى" });
         return;
       }
-      toast.success("تم تسجيل الدخول", { description: "حياك الله في مجتمع إثمار." });
+      toast.success("تم تسجيل الدخول", { description: "حياك الله في مجتمع إثمار" });
     }, 650);
   };
 
@@ -89,7 +89,7 @@ export function LoginScreen() {
             مساحة أعضاء وقادة إثمار
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-ivory/70">
-            تابع مهامك وساعاتك التطوعية، وتعرّف على لجان المبادرة وزملائك في مكان واحد.
+            تابع مهامك وساعاتك التطوعية، وتعرّف على لجان المبادرة وزملائك في مكان واحد
           </p>
         </div>
         <img
@@ -122,7 +122,7 @@ export function LoginScreen() {
             <h1 className="font-display text-3xl font-black text-primary md:text-[2.1rem]">
               حياك الله في مجتمع إثمار
             </h1>
-            <p className="mt-2 text-muted-foreground">سجّل دخولك لمتابعة مهامك وساعاتك التطوعية.</p>
+            <p className="mt-2 text-muted-foreground">سجّل دخولك لمتابعة مهامك وساعاتك التطوعية</p>
 
             <form
               onSubmit={submit}
@@ -212,7 +212,7 @@ export function LoginScreen() {
                   className="text-sm font-bold text-primary/80 transition hover:text-primary"
                   onClick={() =>
                     toast.info("استعادة كلمة المرور غير متاحة في النسخة التجريبية", {
-                      description: "تواصل مع فريق التقنية في إثمار عند إطلاق البوابة.",
+                      description: "تواصل مع فريق التقنية في إثمار عند إطلاق البوابة",
                     })
                   }
                 >
@@ -245,7 +245,7 @@ export function LoginScreen() {
                 <Sparkles className="h-4 w-4" /> نسخة تجريبية من البوابة
               </p>
               <p className="mt-1.5 leading-relaxed text-foreground/70">
-                هذه نسخة أولية بحسابات وبيانات نموذجية، وليست حسابات أعضاء حقيقية.
+                هذه نسخة أولية بحسابات وبيانات نموذجية، وليست حسابات أعضاء حقيقية
               </p>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <dl className="space-y-0.5 text-xs text-foreground/75" dir="ltr">

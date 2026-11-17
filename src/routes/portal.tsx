@@ -11,10 +11,10 @@ export const Route = createFileRoute("/portal")({
   head: () => ({
     meta: [
       { title: "بوابة الأعضاء | مبادرة إثمار" },
-      { name: "description", content: "بوابة أعضاء مبادرة إثمار — نسخة تجريبية." },
+      { name: "description", content: "بوابة أعضاء مبادرة إثمار — نسخة تجريبية" },
       { name: "robots", content: "noindex, nofollow" },
       { property: "og:title", content: "بوابة الأعضاء | مبادرة إثمار" },
-      { property: "og:description", content: "بوابة أعضاء مبادرة إثمار — نسخة تجريبية." },
+      { property: "og:description", content: "بوابة أعضاء مبادرة إثمار — نسخة تجريبية" },
     ],
   }),
   component: PortalRoute,

@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Crown, Gem, Medal, Shield, Sparkles, Star, type LucideProps } from "lucide-react";
 import {
   committeeName,
@@ -196,11 +197,11 @@ export function SampleBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border border-dashed border-gold/60 bg-gold/10 px-2.5 py-0.5 text-[11px] font-bold text-[oklch(0.45_0.08_75)]",
+        "inline-flex items-center gap-1.5 rounded-full bg-gold/10 px-2.5 py-1 text-[11px] font-bold text-[oklch(0.48_0.08_75)]",
         className,
       )}
     >
-      <Sparkles className="h-3 w-3" aria-hidden />
+      <span className="h-1.5 w-1.5 rounded-full bg-gold" aria-hidden />
       {children}
     </span>
   );
@@ -218,10 +219,12 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div>
-        <h1 className="font-display text-2xl font-black text-primary md:text-3xl">{title}</h1>
-        {text && <p className="mt-1.5 text-muted-foreground">{text}</p>}
+        <h1 className="font-display text-[1.75rem] font-black leading-tight text-primary md:text-[2.1rem]">
+          {title}
+        </h1>
+        {text && <p className="mt-1.5 text-[15px] text-muted-foreground">{text}</p>}
       </div>
       {children}
     </div>
@@ -288,6 +291,7 @@ export function ProgressBar({
   tone?: "primary" | "mint" | "gold";
   label?: string;
 }) {
+  const reduce = useReducedMotion();
   const v = Math.max(0, Math.min(100, value));
   return (
     <div
@@ -302,14 +306,16 @@ export function ProgressBar({
         className,
       )}
     >
-      <div
+      <motion.div
         className={cn(
-          "h-full rounded-full transition-[width] duration-700 ease-out",
-          tone === "primary" && "bg-gradient-to-l from-emerald to-[oklch(0.5_0.08_165)]",
+          "h-full rounded-full",
+          tone === "primary" && "bg-gradient-to-l from-emerald to-[oklch(0.52_0.08_165)]",
           tone === "mint" && "bg-mint",
           tone === "gold" && "bg-gold",
         )}
-        style={{ width: `${v}%` }}
+        initial={reduce ? false : { width: 0 }}
+        animate={{ width: `${v}%` }}
+        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
       />
     </div>
   );

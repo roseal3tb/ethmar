@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Mail, AtSign, User } from "lucide-react";
+import { Mail, AtSign } from "lucide-react";
 import { contact, siteNav } from "@/data/site";
 import ksuLockup from "@/assets/ksu-spp-lockup.png";
 import { Wordmark } from "./Wordmark";
+import { SocialLinks } from "./SocialIcons";
 
 export function SiteFooter() {
   return (
@@ -16,7 +17,7 @@ export function SiteFooter() {
         <div className="space-y-5 md:col-span-5">
           <Wordmark size="lg" affiliation={false} />
           <p className="max-w-sm text-sm leading-relaxed text-mint/75">
-            مبادرة طلابية للتوعية المالية تحت برنامج الشراكة الطلابية بجامعة الملك سعود.
+            مبادرة طلابية للتوعية المالية تحت برنامج الشراكة الطلابية بجامعة الملك سعود
           </p>
           <img
             src={ksuLockup}
@@ -33,13 +34,19 @@ export function SiteFooter() {
           <ul className="grid gap-2.5 text-sm text-ivory/75">
             {siteNav.map((n) => (
               <li key={n.to}>
-                <Link to={n.to} className="transition hover:text-mint">
+                <Link
+                  to={n.to}
+                  className="inline-block transition-all duration-300 hover:-translate-x-1 hover:text-mint"
+                >
                   {n.label}
                 </Link>
               </li>
             ))}
             <li>
-              <Link to="/portal" className="transition hover:text-mint">
+              <Link
+                to="/portal"
+                className="inline-block transition-all duration-300 hover:-translate-x-1 hover:text-mint"
+              >
                 بوابة الأعضاء
               </Link>
             </li>
@@ -73,13 +80,8 @@ export function SiteFooter() {
                 <span dir="ltr">{contact.handle}</span>
               </a>
             </li>
-            <li className="flex items-center gap-3">
-              <IconChip>
-                <User className="h-4 w-4" />
-              </IconChip>
-              {contact.president}
-            </li>
           </ul>
+          <SocialLinks className="mt-5" />
         </div>
       </div>
       <div className="relative border-t border-ivory/10">

@@ -255,6 +255,14 @@
 @utility animate-marquee {
   animation: marquee 35s linear infinite;
 }
+@keyframes grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
 @keyframes orbit {
   to {
     transform: rotate(360deg);

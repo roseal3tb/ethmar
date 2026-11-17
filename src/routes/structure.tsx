@@ -3,8 +3,8 @@ import { PublicLayout, PageHero } from "@/components/site/PublicLayout";
 import { StructureTree } from "@/components/site/Structure";
 import { structureTerm } from "@/data/site";
 
-const title = "الهيكلة | مبادرة إثمار";
-const description = "هيكلة مبادرة إثمار: قيادة المبادرة ولجانها وفرق العمل وقادتها.";
+const title = "مثمرينا | مبادرة إثمار";
+const description = "مثمرينا: قيادة مبادرة إثمار ولجانها وفرق العمل وقادتها";
 
 export const Route = createFileRoute("/structure")({
   head: () => ({
@@ -24,9 +24,9 @@ function Page() {
   return (
     <PublicLayout>
       <PageHero
-        eyebrow="الهيكلة"
-        title="هيكلة مبادرة إثمار"
-        text={`الأشخاص خلف إثمار، واللجان والفرق التي تصنع الأثر · ${structureTerm}`}
+        eyebrow="مثمرينا"
+        title="مثمرينا"
+        text={`الأشخاص خلف إثمار، واللجان والفرق التي تصنع الأثر · هيكلة ${structureTerm}`}
       />
       <StructureTree />
     </PublicLayout>

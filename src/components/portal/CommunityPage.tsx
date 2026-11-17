@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { Crown, Lightbulb, Search, ShieldCheck, UserRoundSearch, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { committees, members, roleLabels, type Member, type Role } from "@/data/demo";
+import { motion, useReducedMotion } from "framer-motion";
+import { committees, members, roleLabel, roleLabels, type Member, type Role } from "@/data/demo";
 import { useDemoAuth } from "@/lib/demo-auth";
 import { cn } from "@/lib/utils";
 import { EmptyState, MemberAvatar, PageHeader, SampleBadge, TierBadge, roleStyle } from "./shared";
@@ -24,6 +25,7 @@ const norm = (s: string) =>
 
 export function CommunityPage() {
   const { member: me } = useDemoAuth();
+  const reduce = useReducedMotion();
   const [committee, setCommittee] = useState<string>("all");
   const [query, setQuery] = useState("");
   const q = norm(query);
@@ -45,8 +47,8 @@ export function CommunityPage() {
 
   return (
     <div>
-      <PageHeader title="المجتمع" text="دليل لجان إثمار وقياداتها وأعضائها.">
-        <SampleBadge>أسماء نموذجية للعرض</SampleBadge>
+      <PageHeader title="المجتمع" text="دليل لجان إثمار وقياداتها وأعضائها">
+        <SampleBadge>أسماء نموذجية</SampleBadge>
       </PageHeader>
 
       <div className="space-y-4 rounded-3xl border border-border bg-card p-4 shadow-card md:p-5">
@@ -125,7 +127,7 @@ export function CommunityPage() {
         </div>
       ) : (
         <div className="mt-4 grid gap-5 lg:grid-cols-2">
-          {groups.map(({ committee: c, all, matches }) => {
+          {groups.map(({ committee: c, all, matches }, gi) => {
             const mine = me?.committee === c.id;
             const leaders = leadership.map((l) => ({
               ...l,
@@ -136,11 +138,18 @@ export function CommunityPage() {
               : leaders;
             const regular = matches.filter((m) => m.role === "عضو");
             return (
-              <article
+              <motion.article
                 key={c.id}
+                layout={!reduce}
+                initial={reduce ? false : { opacity: 0, y: 14 }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  transition: { duration: 0.4, delay: gi * 0.05, ease: [0.22, 1, 0.36, 1] },
+                }}
                 className={cn(
-                  "flex flex-col rounded-3xl border bg-card p-5 shadow-card md:p-6",
-                  mine ? "border-primary/30" : "border-border",
+                  "flex flex-col rounded-[1.75rem] border bg-card p-5 shadow-card transition-[border-color,box-shadow] duration-300 hover:shadow-soft md:p-6",
+                  mine ? "border-primary/30" : "border-border/70 hover:border-primary/20",
                 )}
               >
                 <header className="flex items-start justify-between gap-3">
@@ -166,9 +175,9 @@ export function CommunityPage() {
                       <li
                         key={role}
                         className={cn(
-                          "rounded-2xl border p-3",
+                          "rounded-2xl border p-3 transition-all duration-300",
                           person
-                            ? "border-border bg-[oklch(0.985_0.006_100)]"
+                            ? "border-border/70 bg-[oklch(0.985_0.006_100)] hover:-translate-y-0.5 hover:border-primary/25 hover:bg-sage"
                             : "border-dashed border-border",
                         )}
                       >
@@ -178,7 +187,8 @@ export function CommunityPage() {
                             roleStyle[role],
                           )}
                         >
-                          <Icon className="h-3 w-3" /> {roleLabels[role]}
+                          <Icon className="h-3 w-3" />{" "}
+                          {person ? roleLabel(person) : roleLabels[role]}
                         </span>
                         {person ? (
                           <div className="mt-2.5 flex items-center gap-2">
@@ -198,7 +208,7 @@ export function CommunityPage() {
                     <p className="mb-2.5 text-xs font-bold text-muted-foreground">الأعضاء</p>
                     {regular.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
-                        لا يوجد أعضاء آخرون في هذه اللجنة حاليًا.
+                        لا يوجد أعضاء آخرون في هذه اللجنة حاليًا
                       </p>
                     ) : (
                       <ul className="flex flex-wrap gap-2">
@@ -206,7 +216,7 @@ export function CommunityPage() {
                           <li
                             key={m.id}
                             className={cn(
-                              "flex items-center gap-2 rounded-full border py-1 pe-3 ps-1",
+                              "flex items-center gap-2 rounded-full border py-1 pe-3 ps-1 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm",
                               m.id === me?.id
                                 ? "border-primary/40 bg-secondary/60"
                                 : "border-border",
@@ -221,7 +231,7 @@ export function CommunityPage() {
                     )}
                   </div>
                 )}
-              </article>
+              </motion.article>
             );
           })}
         </div>
@@ -270,20 +280,28 @@ function FilterChip({
   label: string;
   count: number;
 }) {
+  const reduce = useReducedMotion();
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={on}
       className={cn(
-        "flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-bold transition-colors",
+        "relative flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-bold transition-colors duration-300",
         on
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border bg-background text-foreground/75 hover:border-primary/40",
+          ? "border-transparent text-primary-foreground"
+          : "border-border bg-background text-foreground/75 hover:border-primary/40 hover:text-foreground",
       )}
     >
-      {label}
-      <span className={cn("rounded-full px-1.5 text-xs", on ? "bg-ivory/20" : "bg-muted")}>
+      {on && (
+        <motion.span
+          layoutId={reduce ? undefined : "committee-chip"}
+          className="absolute inset-0 rounded-full bg-primary"
+          transition={{ type: "spring", stiffness: 420, damping: 36 }}
+        />
+      )}
+      <span className="relative">{label}</span>
+      <span className={cn("relative rounded-full px-1.5 text-xs", on ? "bg-ivory/20" : "bg-muted")}>
         {count}
       </span>
     </button>
