@@ -2,9 +2,9 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from "re
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
+  ArrowRight,
   Bell,
   CheckCheck,
-  FlaskConical,
   Globe,
   KeyRound,
   ListChecks,
@@ -33,12 +33,7 @@ import { PasswordDialog, ProfileDialog } from "./AccountDialogs";
 import { MemberAvatar, TierBadge, daysUntil } from "./shared";
 import { ease } from "./motion";
 
-type PortalPath =
-  | "/portal"
-  | "/portal/leaderboard"
-  | "/portal/community"
-  | "/portal/tasks"
-  | "/portal/labs";
+type PortalPath = "/portal" | "/portal/leaderboard" | "/portal/community" | "/portal/tasks";
 export type PortalNavItem = { to: PortalPath; label: string; icon: LucideIcon };
 
 export const portalNav: PortalNavItem[] = [
@@ -46,7 +41,6 @@ export const portalNav: PortalNavItem[] = [
   { to: "/portal/leaderboard", label: "لوحة الصدارة", icon: Trophy },
   { to: "/portal/community", label: "المجتمع", icon: Users },
   { to: "/portal/tasks", label: "المهام", icon: ListChecks },
-  { to: "/portal/labs", label: "اللابات", icon: FlaskConical },
 ];
 
 /* Lets any portal page open the account dialogs owned by the shell */
@@ -147,6 +141,16 @@ export function PortalShell({ children }: { children: ReactNode }) {
             })}
           </nav>
 
+          <div className="relative px-4 pb-3">
+            <Link
+              to="/"
+              className="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-ivory/65 transition-colors hover:bg-ivory/[0.06] hover:text-ivory"
+            >
+              <ArrowRight className="h-4 w-4 text-mint/60 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-mint" />
+              العودة للموقع الرئيسي
+            </Link>
+          </div>
+
           <div className="relative mx-4 mb-4 rounded-2xl border border-ivory/10 bg-ivory/[0.04] p-3.5">
             <div className="flex items-center gap-3">
               <MemberAvatar name={profile.displayName} id={member.id} />
@@ -198,6 +202,14 @@ export function PortalShell({ children }: { children: ReactNode }) {
                 </AnimatePresence>
               </div>
               <div className="flex items-center gap-1.5">
+                <Link
+                  to="/"
+                  className="group me-1 inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-bold text-primary shadow-sm transition-all duration-300 hover:border-primary hover:bg-primary hover:text-primary-foreground sm:h-10 sm:px-4 sm:text-sm"
+                >
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                  <span className="sm:hidden">الموقع</span>
+                  <span className="hidden sm:inline">الموقع الرئيسي</span>
+                </Link>
                 <span className="me-1 hidden items-center gap-1.5 rounded-full bg-gold/10 px-2.5 py-1 text-[11px] font-bold text-[oklch(0.48_0.08_75)] sm:inline-flex">
                   <span className="h-1.5 w-1.5 rounded-full bg-gold" aria-hidden />
                   نسخة تجريبية
@@ -248,7 +260,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild className="cursor-pointer gap-2 rounded-xl py-2.5">
                       <Link to="/">
-                        <Globe className="h-4 w-4" /> الموقع العام
+                        <Globe className="h-4 w-4" /> الموقع الرئيسي
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -285,7 +297,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
           aria-label="تنقل البوابة"
           className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-card/90 px-2 pt-1.5 shadow-[0_-12px_30px_-22px_rgba(0,0,0,.35)] backdrop-blur-xl lg:hidden"
         >
-          <ul className="mx-auto grid max-w-md grid-cols-5">
+          <ul className="mx-auto grid max-w-md grid-cols-4">
             {portalNav.map((n) => {
               const on = n.to === active.to;
               const Icon = n.icon;

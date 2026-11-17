@@ -302,43 +302,4 @@ export const initialTasks: Task[] = [
   },
 ];
 
-export type Lab = {
-  id: string;
-  title: string;
-  kind: string;
-  description: string;
-  status: "متاح" | "قريبًا";
-};
-// Placeholder labs — configurable until official Labs activities are provided.
-export const labs: Lab[] = [
-  {
-    id: "l1",
-    title: "مختبر التحليل المالي",
-    kind: "تعلم",
-    description: "تمارين قصيرة لقراءة القوائم المالية",
-    status: "قريبًا",
-  },
-  {
-    id: "l2",
-    title: "مختبر المحتوى",
-    kind: "تطوير",
-    description: "مساحة لتجربة أفكار المحتوى التوعوي ومراجعتها",
-    status: "قريبًا",
-  },
-  {
-    id: "l3",
-    title: "مختبر التقنية",
-    kind: "تجارب تقنية",
-    description: "تجارب أدوات رقمية تخدم أعمال المبادرة",
-    status: "قريبًا",
-  },
-  {
-    id: "l4",
-    title: "مكتبة الموارد",
-    kind: "موارد داخلية",
-    description: "أدلة وقوالب داخلية للجان",
-    status: "قريبًا",
-  },
-];
-
 export const committeeName = (id: string) => committees.find((c) => c.id === id)?.name ?? id;

@@ -71,14 +71,14 @@ export function LoginScreen() {
           aria-hidden
         />
         <div className="relative flex items-center justify-between">
-          <Link to="/" aria-label="الموقع العام">
+          <Link to="/" aria-label="الموقع الرئيسي">
             <Wordmark />
           </Link>
           <Link
             to="/"
             className="flex items-center gap-1.5 text-sm text-ivory/70 transition hover:text-ivory"
           >
-            <ArrowRight className="h-4 w-4" /> الموقع العام
+            <ArrowRight className="h-4 w-4" /> الموقع الرئيسي
           </Link>
         </div>
         <div className="relative max-w-md">
@@ -104,7 +104,7 @@ export function LoginScreen() {
       {/* Form panel */}
       <main className="relative flex flex-col">
         <div className="bg-hero grain relative flex items-center justify-between px-5 py-5 lg:hidden">
-          <Link to="/" aria-label="الموقع العام">
+          <Link to="/" aria-label="الموقع الرئيسي">
             <Wordmark size="sm" />
           </Link>
           <Link to="/" className="relative flex items-center gap-1 text-sm text-ivory/75">

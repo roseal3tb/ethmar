@@ -25,7 +25,6 @@ describe("App routing", () => {
     "/portal/leaderboard",
     "/portal/community",
     "/portal/tasks",
-    "/portal/labs",
   ])("matches a page for %s", (path) => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
     const matches = router.matchRoutes(path);
