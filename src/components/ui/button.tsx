@@ -17,8 +17,10 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         hero: "rounded-full bg-mint text-deep font-bold shadow-lift hover:bg-ivory hover:-translate-y-0.5 transition-all",
-        heroGhost: "rounded-full border border-ivory/30 text-ivory hover:bg-ivory/10 transition-all",
-        brand: "rounded-full bg-primary text-primary-foreground font-bold hover:bg-forest hover:-translate-y-0.5 transition-all shadow-soft",
+        heroGhost:
+          "rounded-full border border-ivory/30 text-ivory hover:bg-ivory/10 transition-all",
+        brand:
+          "rounded-full bg-primary text-primary-foreground font-bold hover:bg-forest hover:-translate-y-0.5 transition-all shadow-soft",
       },
       size: {
         default: "h-9 px-4 py-2",

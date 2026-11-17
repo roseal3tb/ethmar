@@ -19,7 +19,11 @@ export const Route = createFileRoute("/partners")({
 function Page() {
   return (
     <PublicLayout>
-      <PageHero eyebrow="شركاء النجاح" title="شركاء صنعوا الأثر معنا" text="الجهات التي شاركت إثمار في صناعة الأثر." />
+      <PageHero
+        eyebrow="شركاء النجاح"
+        title="شركاء صنعوا الأثر معنا"
+        text="الجهات التي شاركت إثمار في صناعة الأثر."
+      />
       <Partners withHead={false} />
     </PublicLayout>
   );

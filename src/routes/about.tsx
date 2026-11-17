@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { StructureTeaser } from "@/components/site/Structure";
 import { PublicLayout, PageHero } from "@/components/site/PublicLayout";
-import { About, Objectives, Impact } from "@/components/site/Sections";
+import { About, AboutIntro, Objectives, Impact } from "@/components/site/Sections";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -8,7 +9,10 @@ export const Route = createFileRoute("/about")({
       { title: "من نحن | مبادرة إثمار" },
       { name: "description", content: "رؤية إثمار ورسالتها وأهدافها في تعزيز الوعي المالي." },
       { property: "og:title", content: "من نحن | مبادرة إثمار" },
-      { property: "og:description", content: "رؤية إثمار ورسالتها وأهدافها في تعزيز الوعي المالي." },
+      {
+        property: "og:description",
+        content: "رؤية إثمار ورسالتها وأهدافها في تعزيز الوعي المالي.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -19,8 +23,16 @@ export const Route = createFileRoute("/about")({
 function Page() {
   return (
     <PublicLayout>
-      <PageHero eyebrow="من نحن" title="مبادرة طلابية تصنع وعيًا ماليًا" text="رؤية إثمار ورسالتها وأهدافها في تعزيز الوعي المالي." />
-      <About /><Objectives /><Impact />
+      <PageHero
+        eyebrow="من نحن"
+        title="مبادرة طلابية تصنع وعيًا ماليًا"
+        text="رؤية إثمار ورسالتها وأهدافها في تعزيز الوعي المالي."
+      />
+      <AboutIntro />
+      <About />
+      <StructureTeaser />
+      <Objectives />
+      <Impact />
     </PublicLayout>
   );
 }

@@ -1,7 +1,15 @@
 import { motion, useInView, useReducedMotion, animate } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-export function Reveal({ children, delay = 0, className }: { children: ReactNode; delay?: number; className?: string }) {
+export function Reveal({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: ReactNode;
+  delay?: number;
+  className?: string;
+}) {
   const reduce = useReducedMotion();
   return (
     <motion.div
@@ -16,7 +24,15 @@ export function Reveal({ children, delay = 0, className }: { children: ReactNode
   );
 }
 
-export function Counter({ to, prefix = "+", suffix = "" }: { to: number; prefix?: string; suffix?: string }) {
+export function Counter({
+  to,
+  prefix = "+",
+  suffix = "",
+}: {
+  to: number;
+  prefix?: string;
+  suffix?: string;
+}) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true });
   const reduce = useReducedMotion();
@@ -24,8 +40,18 @@ export function Counter({ to, prefix = "+", suffix = "" }: { to: number; prefix?
   useEffect(() => {
     if (!inView) return;
     if (reduce) return setV(to);
-    const c = animate(0, to, { duration: 2, ease: "easeOut", onUpdate: (x) => setV(Math.round(x)) });
+    const c = animate(0, to, {
+      duration: 2,
+      ease: "easeOut",
+      onUpdate: (x) => setV(Math.round(x)),
+    });
     return () => c.stop();
   }, [inView, to, reduce]);
-  return <span ref={ref}>{prefix}{v.toLocaleString("en-US")}{suffix}</span>;
+  return (
+    <span ref={ref}>
+      {prefix}
+      {v.toLocaleString("en-US")}
+      {suffix}
+    </span>
+  );
 }

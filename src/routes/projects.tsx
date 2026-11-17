@@ -8,7 +8,10 @@ export const Route = createFileRoute("/projects")({
       { title: "مشاريعنا | مبادرة إثمار" },
       { name: "description", content: "خمسة مشاريع تربط الطلاب بعالم المال والتقنية المالية." },
       { property: "og:title", content: "مشاريعنا | مبادرة إثمار" },
-      { property: "og:description", content: "خمسة مشاريع تربط الطلاب بعالم المال والتقنية المالية." },
+      {
+        property: "og:description",
+        content: "خمسة مشاريع تربط الطلاب بعالم المال والتقنية المالية.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -19,7 +22,11 @@ export const Route = createFileRoute("/projects")({
 function Page() {
   return (
     <PublicLayout>
-      <PageHero eyebrow="مشاريعنا" title="مشاريع إثمار" text="خمسة مشاريع تربط الطلاب بعالم المال والتقنية المالية." />
+      <PageHero
+        eyebrow="مشاريعنا"
+        title="مشاريع إثمار"
+        text="خمسة مشاريع تربط الطلاب بعالم المال والتقنية المالية."
+      />
       <Projects withHead={false} />
     </PublicLayout>
   );

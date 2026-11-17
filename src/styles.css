@@ -38,6 +38,8 @@
   --color-ivory: var(--ivory);
   --color-mint: var(--mint);
   --color-gold: var(--gold);
+  --color-copper: var(--copper);
+  --color-sage: var(--sage);
   --color-tier-bronze: var(--tier-bronze);
   --color-tier-silver: var(--tier-silver);
   --color-tier-gold: var(--tier-gold);
@@ -56,12 +58,14 @@
 :root {
   --radius: 0.875rem;
   /* Ethmar brand */
-  --emerald: oklch(0.31 0.06 167);   /* #063B2D */
-  --forest: oklch(0.305 0.05 163);   /* #0A3A2A */
-  --deep: oklch(0.2 0.035 170);      /* #031F19 */
-  --ivory: oklch(0.966 0.01 100);    /* #F6F5EF */
-  --mint: oklch(0.876 0.03 160);     /* #C8DED3 */
-  --gold: oklch(0.73 0.1 82);        /* #C6A45C */
+  --emerald: oklch(0.31 0.06 167); /* #063B2D */
+  --forest: oklch(0.305 0.05 163); /* #0A3A2A */
+  --deep: oklch(0.2 0.035 170); /* #031F19 */
+  --ivory: oklch(0.966 0.01 100); /* #F6F5EF */
+  --mint: oklch(0.876 0.03 160); /* #C8DED3 */
+  --gold: oklch(0.73 0.1 82); /* #C6A45C */
+  --copper: oklch(0.58 0.08 55); /* logo chevron accent */
+  --sage: oklch(0.94 0.02 155); /* soft mint wash for light sections */
 
   --background: var(--ivory);
   --foreground: var(--deep);
@@ -98,30 +102,75 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: var(--mint);
 
-  --gradient-hero: radial-gradient(ellipse 80% 60% at 75% 20%, oklch(0.42 0.08 165 / 0.9), transparent 60%),
+  --gradient-hero:
+    radial-gradient(ellipse 80% 60% at 75% 20%, oklch(0.42 0.08 165 / 0.9), transparent 60%),
     radial-gradient(ellipse 60% 50% at 10% 90%, oklch(0.36 0.07 160 / 0.7), transparent 60%),
     linear-gradient(160deg, var(--emerald), var(--deep));
   --gradient-deep: linear-gradient(180deg, var(--forest), var(--deep));
   --shadow-soft: 0 20px 50px -25px color-mix(in oklab, var(--deep) 45%, transparent);
   --shadow-lift: 0 30px 60px -30px color-mix(in oklab, var(--emerald) 60%, transparent);
+  --shadow-card:
+    0 1px 0 color-mix(in oklab, var(--deep) 4%, transparent),
+    0 12px 32px -18px color-mix(in oklab, var(--deep) 30%, transparent);
+  --gradient-emerald-soft: linear-gradient(
+    135deg,
+    oklch(0.36 0.07 165),
+    var(--emerald) 55%,
+    var(--forest)
+  );
+
+  /* Membership tier finishes (portal) */
+  --tier-bronze-grad: linear-gradient(135deg, oklch(0.72 0.09 60), oklch(0.5 0.08 45));
+  --tier-silver-grad: linear-gradient(135deg, oklch(0.9 0.005 240), oklch(0.66 0.01 240));
+  --tier-gold-grad: linear-gradient(135deg, oklch(0.86 0.1 88), oklch(0.64 0.1 75));
+  --tier-platinum-grad: linear-gradient(135deg, oklch(0.93 0.02 190), oklch(0.7 0.04 205));
+  --tier-diamond-grad: linear-gradient(135deg, oklch(0.9 0.07 210), oklch(0.62 0.1 235));
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
-  html { scroll-behavior: smooth; }
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
-  h1, h2, h3, h4 { font-family: var(--font-display); }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+  }
+  ::selection {
+    background: var(--mint);
+    color: var(--deep);
+  }
+  :focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
+  }
+  img {
+    -webkit-user-drag: none;
+  }
 }
 
-@utility bg-hero { background: var(--gradient-hero); }
-@utility bg-deep-gradient { background: var(--gradient-deep); }
-@utility shadow-soft { box-shadow: var(--shadow-soft); }
-@utility shadow-lift { box-shadow: var(--shadow-lift); }
+@utility bg-hero {
+  background: var(--gradient-hero);
+}
+@utility bg-deep-gradient {
+  background: var(--gradient-deep);
+}
+@utility shadow-soft {
+  box-shadow: var(--shadow-soft);
+}
+@utility shadow-lift {
+  box-shadow: var(--shadow-lift);
+}
 @utility glass {
   background: color-mix(in oklab, var(--ivory) 7%, transparent);
   backdrop-filter: blur(14px);
@@ -131,17 +180,111 @@
   position: relative;
   &::before {
     content: "";
-    position: absolute; inset: 0; pointer-events: none; opacity: .07;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.07;
     background-image: radial-gradient(var(--ivory) 1px, transparent 1px);
     background-size: 22px 22px;
   }
 }
 
-@keyframes drift { 0%,100% { transform: translate(0,0) scale(1);} 50% { transform: translate(30px,-20px) scale(1.08);} }
-@keyframes marquee { from { transform: translateX(0);} to { transform: translateX(50%);} }
-@utility animate-drift { animation: drift 14s ease-in-out infinite; }
-@utility animate-marquee { animation: marquee 35s linear infinite; }
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+@utility bg-emerald-soft {
+  background: var(--gradient-emerald-soft);
+}
+@utility bg-sage-wash {
+  background:
+    radial-gradient(
+      ellipse 70% 60% at 85% 0%,
+      color-mix(in oklab, var(--mint) 45%, transparent),
+      transparent 70%
+    ),
+    var(--sage);
+}
+@utility text-balance {
+  text-wrap: balance;
+}
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+@utility pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+@utility tier-bronze {
+  background: var(--tier-bronze-grad);
+}
+@utility tier-silver {
+  background: var(--tier-silver-grad);
+}
+@utility tier-gold {
+  background: var(--tier-gold-grad);
+}
+@utility tier-platinum {
+  background: var(--tier-platinum-grad);
+}
+@utility tier-diamond {
+  background: var(--tier-diamond-grad);
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(30px, -20px) scale(1.08);
+  }
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(50%);
+  }
+}
+@utility animate-drift {
+  animation: drift 14s ease-in-out infinite;
+}
+@utility animate-marquee {
+  animation: marquee 35s linear infinite;
+}
+@keyframes orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes glow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.04);
+  }
+}
+@utility animate-orbit {
+  animation: orbit 60s linear infinite;
+}
+@utility animate-glow {
+  animation: glow 7s ease-in-out infinite;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
