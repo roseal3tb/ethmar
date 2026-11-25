@@ -40,14 +40,14 @@ export function RegistrationDialog({
                   className="group flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm font-bold text-foreground transition-all duration-300 hover:border-primary hover:bg-primary hover:text-primary-foreground"
                 >
                   <span className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-primary transition-colors group-hover:bg-ivory/15 group-hover:text-mint">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-primary transition-colors group-hover:bg-deep/15 group-hover:text-deep">
                       <SocialIcon id={s.id} />
                     </span>
                     {s.label}
                   </span>
                   <span
                     dir="ltr"
-                    className="text-xs font-medium text-muted-foreground transition-colors group-hover:text-mint"
+                    className="text-xs font-medium text-muted-foreground transition-colors group-hover:text-deep"
                   >
                     {contact.handle}
                   </span>

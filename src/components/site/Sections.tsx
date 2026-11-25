@@ -282,7 +282,7 @@ export function AboutIntro() {
         {audience.map((a, i) => (
           <Reveal key={a.title} delay={i * 0.08}>
             <div className="group flex h-full items-start gap-5 rounded-3xl border border-border bg-card p-7 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-soft">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-secondary font-display text-xl font-black text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-mint">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-secondary font-display text-xl font-black text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-deep">
                 {i + 1}
               </span>
               <div>
@@ -321,7 +321,7 @@ export function About() {
         </Reveal>
         <Reveal delay={0.12} className="lg:col-span-2">
           <div className="bg-sage-wash group relative h-full overflow-hidden rounded-[2rem] border border-primary/10 p-10 transition-all duration-500 hover:border-primary/25 hover:shadow-soft md:p-12">
-            <span className="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-mint">
+            <span className="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-deep">
               <Target className="h-7 w-7" />
             </span>
             <p className="mb-3 text-sm font-bold text-primary/70">رسالتنا</p>
@@ -411,7 +411,7 @@ export function Objectives() {
               aria-hidden
             />
             {objectives.map((o, i) => {
-              const Icon = objIcons[i];
+              const Icon = objIcons[i] ?? Compass;
               const on = active === i;
               return (
                 <li key={o.title} className="relative">
@@ -517,7 +517,7 @@ function ProjectViewer({
 }) {
   const reduce = useReducedMotion();
   const [dir, setDir] = useState(0);
-  const sel = projects[index];
+  const sel = projects[index]!;
   const go = (d: number) => {
     setDir(d);
     onIndexChange((index + d + projects.length) % projects.length);
@@ -704,7 +704,15 @@ function ProjectCard({
 
 /* -------------------------------------------------------------- Partners */
 
-function PartnerCard({ name, nameAr, index }: { name: string; nameAr?: string; index?: number }) {
+function PartnerCard({
+  name,
+  nameAr,
+  index,
+}: {
+  name: string;
+  nameAr?: string | undefined;
+  index?: number | undefined;
+}) {
   return (
     <div className="group relative flex h-full flex-col justify-between overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/25">
       {index !== undefined && (

@@ -559,3 +559,40 @@ body:has(.portal) [data-sonner-toast] [data-button] {
   color: #031f19;
   font-weight: 700;
 }
+
+/* ───────────── Public site: same dark, calm Ethmar look as the portal ───────────── */
+.site-dark,
+body:has(.site-dark) {
+  --background: #031f19;
+  --foreground: #f6f5ef;
+  --card: #08291f;
+  --card-foreground: #f6f5ef;
+  --popover: #0a2d24;
+  --popover-foreground: #f6f5ef;
+  --primary: #c8ded3;
+  --primary-foreground: #031f19;
+  --secondary: rgb(200 222 211 / 0.08);
+  --secondary-foreground: #c8ded3;
+  --muted: rgb(200 222 211 / 0.06);
+  --muted-foreground: #9db8ab;
+  --accent: rgb(200 222 211 / 0.08);
+  --accent-foreground: #f6f5ef;
+  --border: rgb(200 222 211 / 0.12);
+  --input: rgb(200 222 211 / 0.18);
+  --ring: #c6a45c;
+  --sage: #0a2d24;
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.02), 0 18px 40px -24px rgb(0 0 0 / 0.6);
+  --shadow-soft: 0 24px 60px -30px rgb(0 0 0 / 0.7);
+  color-scheme: dark;
+}
+body:has(.site-dark) {
+  background: #031f19;
+}
+.site-dark ::selection {
+  background: rgb(198 164 92 / 0.35);
+  color: #f6f5ef;
+}
+.site-dark .bg-sage-wash {
+  background:
+    radial-gradient(ellipse 70% 60% at 85% 0%, rgb(143 217 179 / 0.08), transparent 70%), #08291f;
+}

@@ -41,7 +41,7 @@ export function SocialLinks({
               "flex h-10 w-10 items-center justify-center rounded-full border transition-all duration-300 hover:-translate-y-0.5",
               tone === "dark"
                 ? "border-ivory/15 bg-ivory/5 text-ivory/80 hover:border-mint/60 hover:bg-mint hover:text-deep"
-                : "border-border bg-card text-primary hover:border-primary hover:bg-primary hover:text-mint",
+                : "border-border bg-card text-primary hover:border-primary hover:bg-primary hover:text-deep",
             )}
           >
             <SocialIcon id={s.id} />

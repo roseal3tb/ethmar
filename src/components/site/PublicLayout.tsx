@@ -9,7 +9,7 @@ import { PageTransition } from "./PageTransition";
 
 export function PublicLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="site-dark min-h-screen bg-background text-foreground">
       <SiteHeader />
       <main id="main">
         <PageTransition>{children}</PageTransition>

@@ -1,345 +1,433 @@
+// «مثمرينا» — the public view of Ethmar's official structure (src/data/structure.ts).
+// Leadership on top, the committees as a horizontal row of cards; choosing one opens its
+// leaders, teams and members below. Names only — no hours or tiers on the public site.
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   BadgeCheck,
-  ChevronLeft,
+  ChevronDown,
   Cpu,
+  Crown,
   FolderKanban,
   Handshake,
   LineChart,
   Megaphone,
-  User,
+  Search,
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { affiliation, committees, leadership, type Committee, type Person } from "@/data/site";
+import { useMemo, useState } from "react";
+import {
+  structureCommittees,
+  structurePeople,
+  structureTeams,
+  type StructCommittee,
+  type StructPerson,
+} from "@/data/structure";
 import { cn } from "@/lib/utils";
 import { Reveal } from "./Reveal";
-import logoOnLight from "@/assets/ethmar-logo.png";
 
-const committeeIcons: Record<string, LucideIcon> = {
+const ease = [0.22, 1, 0.36, 1] as const;
+const ICONS: Record<string, LucideIcon> = {
+  tech: Cpu,
   pr: Handshake,
   hr: Users,
   media: Megaphone,
-  fincontent: LineChart,
+  fin: LineChart,
   quality: BadgeCheck,
-  tech: Cpu,
   projects: FolderKanban,
 };
+const COMMITTEE_HEADS = ["committee_lead", "committee_deputy"];
+const TEAM_HEADS = ["team_lead", "team_deputy", "team_supervisor"];
+const ROLE_TITLE: Record<string, string> = {
+  president: "رئيس المبادرة",
+  vice_president: "نائب الرئيس",
+  committee_lead: "قائد اللجنة",
+  committee_deputy: "نائب القائد",
+  team_lead: "قائد الفريق",
+  team_deputy: "نائب قائد الفريق",
+  team_supervisor: "إشراف",
+  project_lead: "قائد مشروع",
+  member: "عضو",
+};
+const titleOf = (p: StructPerson) => p.title ?? ROLE_TITLE[p.role] ?? "";
+const initials = (name: string) => {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]!.replace(/^ال/, "")[0] ?? "";
+  const last = parts.length > 1 ? (parts[parts.length - 1]!.replace(/^ال/, "")[0] ?? "") : "";
+  return first + last;
+};
+const inCommittee = (id: string) => structurePeople.filter((p) => p.committee_id === id);
 
-const memberCount = committees.reduce(
-  (n, c) =>
-    n + (c.members?.length ?? 0) + c.teams.reduce((m, t) => m + (t.members?.length ?? 0), 0),
-  0,
-);
-
-const leaderCount =
-  1 +
-  leadership.vicePresidents.length +
-  committees.reduce(
-    (n, c) => n + c.leads.length + c.teams.reduce((m, t) => m + t.people.length, 0),
-    0,
-  );
-
-/* ---------------------------------------------------------------- Person */
-
-function PersonCard({
-  person,
-  size = "sm",
-  featured,
+function Avatar({
+  name,
+  size = 44,
+  ring,
 }: {
-  person: Person;
-  size?: "sm" | "md" | "lg";
-  featured?: boolean;
-}) {
-  const w =
-    size === "lg"
-      ? "w-[13.5rem] sm:w-60"
-      : size === "md"
-        ? "w-full sm:w-44"
-        : "w-full sm:w-[9.5rem]";
-  return (
-    <article className={cn("group", w)}>
-      <div
-        className={cn(
-          "relative flex h-full flex-col items-center justify-center gap-3 overflow-hidden rounded-3xl border text-center transition-all duration-500 hover:-translate-y-1",
-          size === "lg" ? "aspect-[5/4] p-6" : "aspect-square p-4",
-          featured
-            ? "bg-hero grain border-transparent text-ivory shadow-lift"
-            : "border-border bg-card shadow-card hover:border-primary/25 hover:shadow-soft",
-        )}
-      >
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-[3px] origin-center scale-x-0 bg-gold transition-transform duration-500 ease-out group-hover:scale-x-100"
-        />
-        <span
-          className={cn(
-            "relative grid shrink-0 place-items-center rounded-full transition-transform duration-500 group-hover:scale-105",
-            size === "lg" ? "size-16" : size === "md" ? "size-12 sm:size-14" : "size-10 sm:size-11",
-            featured
-              ? "border border-gold/50 bg-gold/10 text-gold"
-              : "border border-primary/15 bg-secondary/60 text-primary",
-          )}
-        >
-          <User
-            aria-hidden
-            strokeWidth={1.6}
-            className={size === "lg" ? "size-8" : size === "md" ? "size-6" : "size-5"}
-          />
-        </span>
-        <div className="relative min-w-0">
-          <h4
-            className={cn(
-              "font-display font-extrabold leading-tight",
-              size === "lg"
-                ? "text-xl"
-                : size === "md"
-                  ? "text-[0.95rem] sm:text-base"
-                  : "text-[0.8rem] sm:text-sm",
-              featured ? "text-ivory" : "text-foreground",
-            )}
-          >
-            {person.name}
-          </h4>
-          <p
-            className={cn(
-              "mt-1 leading-normal",
-              size === "sm" ? "text-[0.7rem] sm:text-xs" : "text-xs",
-              featured ? "text-mint" : "text-muted-foreground",
-            )}
-          >
-            {person.role}
-          </p>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function CardRow({
-  people,
-  size,
-  className,
-}: {
-  people: Person[];
-  size: "sm" | "md";
-  className?: string;
+  name: string;
+  size?: number;
+  ring?: string | undefined;
 }) {
   return (
-    // Mobile: two cards per row (a lone last card is centred). sm+: centred wrapping row
-    <ul
-      className={cn(
-        "grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-stretch sm:justify-center sm:gap-4",
-        className,
-      )}
+    <span
+      aria-hidden
+      className="grid shrink-0 place-items-center rounded-full bg-[#0f3a2f] font-display font-extrabold text-mint"
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.round(size * 0.34),
+        boxShadow: ring ? `0 0 0 2px ${ring}` : "inset 0 0 0 1px rgb(200 222 211 / .14)",
+      }}
     >
-      {people.map((p, i) => {
-        const lone = people.length % 2 === 1 && i === people.length - 1;
-        return (
-          <li key={p.name} className={cn("flex justify-center", lone && "col-span-2")}>
-            <Reveal
-              delay={Math.min(i, 8) * 0.05}
-              className={cn("flex", lone ? "w-[calc(50%-0.375rem)] sm:w-auto" : "w-full sm:w-auto")}
-            >
-              <PersonCard person={p} size={size} />
-            </Reveal>
-          </li>
-        );
-      })}
-    </ul>
+      {initials(name)}
+    </span>
   );
 }
 
-function MemberList({ names, title = "الأعضاء" }: { names: string[]; title?: string }) {
+export function StructureTree() {
+  const [open, setOpen] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const reduce = useReducedMotion();
+  const leadership = structurePeople.filter(
+    (p) => p.role === "president" || p.role === "vice_president",
+  );
+  const president = leadership.find((p) => p.role === "president");
+  const vps = leadership.filter((p) => p.role === "vice_president");
+  const leaders = structurePeople.filter((p) => p.role !== "member").length;
+  const results = useMemo(() => {
+    const s = q.trim();
+    return s ? structurePeople.filter((p) => p.name.includes(s)).slice(0, 12) : [];
+  }, [q]);
+  const current = structureCommittees.find((c) => c.id === open);
+
   return (
-    <div className="mt-5">
-      <p className="mb-3 flex items-center justify-center gap-2 text-xs font-bold text-muted-foreground">
-        {title}
-        <span className="rounded-full bg-card px-2 py-0.5 text-primary shadow-sm">
-          {names.length}
-        </span>
-      </p>
-      <ul className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
-        {names.map((n, i) => (
-          <li key={`${n}-${i}`}>
-            <span className="inline-flex cursor-default items-center rounded-full border border-border bg-card px-3 py-1.5 text-[13px] text-foreground/85 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground">
-              {n}
-            </span>
-          </li>
-        ))}
-      </ul>
+    <div className="mx-auto max-w-7xl px-5 pb-24 pt-14 md:pb-28 md:pt-16">
+      {/* numbers */}
+      <Reveal>
+        <dl className="mx-auto grid max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-3xl border border-border bg-border text-center sm:grid-cols-4">
+          {[
+            { k: "لجان", v: structureCommittees.length },
+            { k: "فرق عمل", v: structureTeams.length },
+            { k: "قائد وقائدة", v: leaders },
+            { k: "عضو وعضوة", v: structurePeople.length - leaders },
+          ].map((s) => (
+            <div key={s.k} className="bg-card px-3 py-5">
+              <dt className="text-xs text-muted-foreground sm:text-sm">{s.k}</dt>
+              <dd className="mt-1 font-display text-3xl font-black text-mint">{s.v}</dd>
+            </div>
+          ))}
+        </dl>
+      </Reveal>
+
+      {/* leadership */}
+      <section aria-labelledby="lead-h" className="mt-16 flex flex-col items-center">
+        <h2 id="lead-h" className="mb-5 text-sm font-bold text-muted-foreground">
+          قيادة المبادرة
+        </h2>
+        {president && (
+          <Reveal>
+            <div className="flex items-center gap-4 rounded-3xl border border-gold/35 bg-card px-6 py-4">
+              <Avatar name={president.name} size={56} ring="var(--gold)" />
+              <div>
+                <p className="font-display text-xl font-extrabold">{president.name}</p>
+                <p className="text-sm text-gold">{titleOf(president)}</p>
+              </div>
+            </div>
+          </Reveal>
+        )}
+        <span aria-hidden className="h-6 w-px bg-border" />
+        <div className="relative grid w-full max-w-xl grid-cols-1 gap-3 pt-6 sm:grid-cols-2">
+          <span
+            aria-hidden
+            className="absolute inset-x-[25%] top-0 hidden h-px bg-border sm:block"
+          />
+          {vps.map((p, i) => (
+            <Reveal key={p.name} delay={0.08 + i * 0.06} className="relative">
+              <span
+                aria-hidden
+                className="absolute -top-6 left-1/2 hidden h-6 w-px bg-border sm:block"
+              />
+              <div className="flex items-center gap-3 rounded-3xl border border-border bg-card px-5 py-4">
+                <Avatar name={p.name} size={46} />
+                <div>
+                  <p className="font-display font-bold">{p.name}</p>
+                  <p className="text-xs text-gold">{titleOf(p)}</p>
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+        <span aria-hidden className="mt-6 h-8 w-px bg-border" />
+      </section>
+
+      {/* committees */}
+      <section aria-labelledby="com-h" className="relative">
+        <h2 id="com-h" className="sr-only">
+          اللجان
+        </h2>
+        <div aria-hidden className="absolute inset-x-[7%] top-0 hidden h-px bg-border lg:block" />
+        <ul className="scrollbar-none -mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-3 pt-6 lg:mx-0 lg:grid lg:grid-cols-7 lg:overflow-visible lg:px-0">
+          {structureCommittees.map((c, i) => (
+            <CommitteeCard
+              key={c.id}
+              c={c}
+              i={i}
+              active={open === c.id}
+              onToggle={() => setOpen(open === c.id ? null : c.id)}
+            />
+          ))}
+        </ul>
+
+        <AnimatePresence initial={false} mode="wait">
+          {current && (
+            <motion.div
+              key={current.id}
+              initial={reduce ? false : { opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.45, ease }}
+              className="overflow-hidden"
+            >
+              <CommitteeDetail c={current} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {!current && (
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            اختر لجنة تشوف قادتها وفرقها وأعضاءها
+          </p>
+        )}
+      </section>
+
+      {/* search */}
+      <section aria-labelledby="find-h" className="mx-auto mt-20 max-w-2xl">
+        <h2 id="find-h" className="mb-4 text-center font-display text-2xl font-extrabold">
+          تدوّر على أحد؟
+        </h2>
+        <label className="relative block">
+          <Search className="pointer-events-none absolute start-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            className="h-12 w-full rounded-2xl border border-input bg-card ps-11 pe-4 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-gold"
+            placeholder="اكتب الاسم"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            aria-label="ابحث في مثمرينا"
+          />
+        </label>
+        {q.trim() && (
+          <ul
+            className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card"
+            aria-live="polite"
+          >
+            {results.length === 0 && (
+              <li className="p-4 text-center text-sm text-muted-foreground">ما لقينا هذا الاسم</li>
+            )}
+            {results.map((p) => {
+              const c = structureCommittees.find((x) => x.id === p.committee_id);
+              const t = structureTeams.find((x) => x.id === p.team_id);
+              return (
+                <li key={p.name}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (c) setOpen(c.id);
+                      setQ("");
+                      document
+                        .getElementById("com-h")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-secondary"
+                  >
+                    <Avatar name={p.name} size={34} />
+                    <span>
+                      <b className="block text-sm">{p.name}</b>
+                      <span className="text-xs text-muted-foreground">
+                        {[titleOf(p), t?.name ?? c?.title ?? "قيادة المبادرة"].join(" · ")}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
 
-/* ------------------------------------------------------------- Committee */
-
-function CommitteeBlock({ committee: c }: { committee: Committee }) {
-  const Icon = committeeIcons[c.id] ?? Users;
+function CommitteeCard({
+  c,
+  i,
+  active,
+  onToggle,
+}: {
+  c: StructCommittee;
+  i: number;
+  active: boolean;
+  onToggle: () => void;
+}) {
+  const Icon = ICONS[c.id] ?? Users;
+  const people = inCommittee(c.id);
+  const lead = people.find((p) => p.role === "committee_lead");
+  const teams = structureTeams.filter((t) => t.committee_id === c.id);
   return (
-    <section id={c.id} aria-labelledby={`${c.id}-title`} className="scroll-mt-28">
-      <Reveal>
-        <div className="flex flex-col items-center gap-3 text-center">
-          <span className="grid size-12 place-items-center rounded-2xl bg-primary text-mint shadow-soft">
-            <Icon aria-hidden className="size-6" />
-          </span>
-          <h2
-            id={`${c.id}-title`}
-            className="font-display text-2xl font-black text-primary md:text-[1.7rem]"
-          >
-            {c.title}
-          </h2>
+    <motion.li
+      initial={{ opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, ease, delay: i * 0.05 }}
+      className="relative w-[11.5rem] shrink-0 snap-start lg:w-auto"
+    >
+      <span aria-hidden className="absolute -top-6 left-1/2 hidden h-6 w-px bg-border lg:block" />
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={active}
+        className={cn(
+          "group flex h-full w-full flex-col overflow-hidden rounded-3xl border bg-card text-start transition-all duration-300",
+          active
+            ? "border-transparent shadow-[0_0_0_1.5px_var(--accent-c)]"
+            : "border-border hover:-translate-y-0.5 hover:border-mint/25",
+        )}
+        style={{ ["--accent-c" as string]: c.accent }}
+      >
+        <span className="h-1" style={{ background: c.accent }} />
+        <span className="flex flex-1 flex-col gap-2 p-4">
           <span
-            aria-hidden
-            className="h-px w-20 bg-gradient-to-l from-transparent via-gold to-transparent"
-          />
-        </div>
-      </Reveal>
-
-      <CardRow people={c.leads} size="md" className="mt-7" />
-
-      {c.teams.length > 0 && (
-        <div
-          className={cn(
-            "mt-8 grid gap-8",
-            c.teams.length > 1 && "lg:grid-cols-2",
-            c.teams.length > 2 && "xl:grid-cols-3",
+            className="grid size-10 place-items-center rounded-xl"
+            style={{
+              background: `color-mix(in oklab, ${c.accent} 14%, transparent)`,
+              color: c.accent,
+            }}
+          >
+            <Icon className="size-5" />
+          </span>
+          <b className="font-display leading-snug">{c.title}</b>
+          <span className="text-xs text-muted-foreground">
+            {people.length} عضو{teams.length ? ` · ${teams.length} فرق` : ""}
+          </span>
+          {lead && (
+            <span className="mt-auto flex items-center gap-1 pt-1 text-xs text-mint/85">
+              <Crown className="size-3 text-gold" /> {lead.name}
+            </span>
           )}
-        >
-          {c.teams.map((t) => (
-            <div
-              key={t.name}
-              className={cn(
-                "rounded-[1.75rem] border border-primary/10 bg-sage/60 p-4 transition-colors hover:border-primary/20 sm:p-5",
-                c.teams.length === 1 && "mx-auto w-full max-w-5xl",
-              )}
-            >
-              <p className="mb-4 text-center">
-                <span className="inline-flex items-center gap-2 rounded-full bg-card px-4 py-1.5 font-display text-sm font-bold text-primary shadow-sm">
-                  <span className="h-1.5 w-1.5 rotate-45 bg-copper" aria-hidden />
-                  {t.name}
-                </span>
-              </p>
-              <CardRow people={t.people} size="sm" />
-              {t.members && t.members.length > 0 && <MemberList names={t.members} />}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {c.members && c.members.length > 0 && (
-        <div className="mx-auto mt-8 max-w-4xl rounded-[1.75rem] border border-primary/10 bg-sage/60 p-5 transition-colors hover:border-primary/20">
-          <MemberList names={c.members} title="أعضاء اللجنة" />
-        </div>
-      )}
-    </section>
+        </span>
+        <span className="flex items-center justify-center gap-1 border-t border-border py-2 text-xs font-bold text-mint/80">
+          {active ? "إخفاء" : "التفاصيل"}
+          <ChevronDown
+            className={cn("size-3.5 transition-transform duration-300", active && "rotate-180")}
+          />
+        </span>
+      </button>
+    </motion.li>
   );
 }
 
-/* ------------------------------------------------------------------ Page */
+function CommitteeDetail({ c }: { c: StructCommittee }) {
+  const people = inCommittee(c.id);
+  const heads = people
+    .filter((p) => COMMITTEE_HEADS.includes(p.role))
+    .sort((a) => (a.role === "committee_lead" ? -1 : 1));
+  const teams = structureTeams.filter((t) => t.committee_id === c.id);
+  const projectLeads = people.filter((p) => p.role === "project_lead");
+  const loose = people.filter((p) => !p.team_id && p.role === "member");
 
-export function StructureTree() {
-  const { president, vicePresidents } = leadership;
   return (
-    <>
-      {/* Initiative leadership */}
-      <section aria-labelledby="leadership-title" className="mx-auto max-w-7xl px-5 pt-16 md:pt-20">
-        <Reveal>
-          <ol
-            aria-label="الجهة المشرفة"
-            className="mx-auto flex max-w-fit flex-wrap items-center justify-center gap-x-1.5 gap-y-2 rounded-full border border-border bg-card px-3 py-2 text-xs text-muted-foreground shadow-card sm:text-sm"
-          >
-            {affiliation.map((a) => (
-              <li key={a} className="flex items-center gap-1.5">
-                <span className="rounded-full px-3 py-1">{a}</span>
-                <ChevronLeft className="h-3.5 w-3.5 text-gold" aria-hidden />
-              </li>
-            ))}
-            <li className="flex items-center">
-              <span className="flex items-center rounded-full bg-secondary px-4 py-1.5">
-                <img
-                  src={logoOnLight}
-                  alt="مبادرة إثمار"
-                  className="h-6 w-auto sm:h-7"
-                  width={720}
-                  height={267}
-                />
-              </span>
-            </li>
-          </ol>
-        </Reveal>
-
-        <h2 id="leadership-title" className="sr-only">
-          قيادة المبادرة
-        </h2>
-        <div className="mt-10 flex flex-col items-center">
-          <span
-            aria-hidden
-            className="mb-4 h-8 w-px bg-gradient-to-b from-transparent to-primary/40"
-          />
-          <Reveal>
-            <PersonCard person={president} size="lg" featured />
-          </Reveal>
-          <span aria-hidden className="h-8 w-px bg-primary/30" />
-          {/* Vice presidents: always side by side, also on mobile */}
-          <div className="relative grid w-full max-w-[22rem] grid-cols-2 gap-3 pt-6 sm:flex sm:w-auto sm:max-w-none sm:gap-4">
-            <span aria-hidden className="absolute inset-x-[25%] top-0 h-px bg-primary/30" />
-            {vicePresidents.map((p, i) => (
-              <Reveal key={p.name} delay={0.1 + i * 0.08} className="relative flex">
-                <span aria-hidden className="absolute -top-6 left-1/2 h-6 w-px bg-primary/30" />
-                <PersonCard person={p} size="md" />
-              </Reveal>
-            ))}
-          </div>
+    <div
+      className="mt-6 rounded-[2rem] border bg-card p-5 sm:p-8"
+      style={{ borderColor: `color-mix(in oklab, ${c.accent} 30%, transparent)` }}
+    >
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 className="font-display text-2xl font-extrabold">{c.title}</h3>
+          {c.description && <p className="mt-1 text-muted-foreground">{c.description}</p>}
         </div>
+        <span className="text-sm text-muted-foreground">{people.length} عضو</span>
+      </div>
 
-        <Reveal>
-          <dl className="mx-auto mt-14 grid max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-3xl border border-border bg-border text-center shadow-card sm:grid-cols-4">
-            {[
-              { k: "لجان", v: committees.length },
-              { k: "فرق عمل", v: committees.reduce((n, c) => n + c.teams.length, 0) },
-              { k: "قائد وقائدة", v: leaderCount },
-              { k: "عضو وعضوة", v: memberCount },
-            ].map((s) => (
-              <div key={s.k} className="bg-card px-3 py-5 transition-colors hover:bg-sage">
-                <dt className="text-xs text-muted-foreground sm:text-sm">{s.k}</dt>
-                <dd className="mt-1 font-display text-3xl font-black text-primary">{s.v}</dd>
-              </div>
-            ))}
-          </dl>
-        </Reveal>
-      </section>
-
-      {/* Quick committee navigation */}
-      <nav aria-label="اللجان" className="sticky top-3 z-30 mx-auto mt-12 max-w-7xl px-5">
-        <ul className="scrollbar-none mx-auto flex max-w-fit gap-1.5 overflow-x-auto rounded-full border border-border bg-card/90 p-1.5 shadow-card backdrop-blur-xl">
-          {committees.map((c) => (
-            <li key={c.id} className="shrink-0">
-              <a
-                href={`#${c.id}`}
-                className="block rounded-full px-3.5 py-2 text-sm font-bold text-foreground/70 transition hover:bg-secondary hover:text-primary"
-              >
-                {c.name}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      {/* Committees */}
-      <div className="mx-auto max-w-7xl px-5 pb-24 pt-14 md:pb-28">
-        {committees.map((c, i) => (
-          <div key={c.id}>
-            {i > 0 && (
-              <div aria-hidden className="my-14 flex items-center justify-center gap-3 md:my-16">
-                <span className="h-px w-full max-w-[10rem] bg-border" />
-                <span className="h-2 w-2 rotate-45 bg-gold/70" />
-                <span className="h-px w-full max-w-[10rem] bg-border" />
-              </div>
-            )}
-            <CommitteeBlock committee={c} />
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {heads.map((p) => (
+          <div
+            key={p.name}
+            className="flex items-center gap-3 rounded-2xl border border-border bg-background/40 p-3.5"
+          >
+            <Avatar
+              name={p.name}
+              size={44}
+              ring={p.role === "committee_lead" ? c.accent : undefined}
+            />
+            <div>
+              <b className="block">{p.name}</b>
+              <span className="text-xs text-gold">{titleOf(p)}</span>
+            </div>
           </div>
         ))}
       </div>
-    </>
+
+      {projectLeads.length > 0 && <Group title="قادة المشاريع" names={projectLeads} />}
+
+      {teams.map((t) => {
+        const tm = people.filter((p) => p.team_id === t.id);
+        const th = tm.filter((p) => TEAM_HEADS.includes(p.role));
+        return (
+          <div key={t.id} className="mt-7">
+            <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+              <h4 className="font-display text-lg font-bold">{t.name}</h4>
+              <span className="text-xs text-muted-foreground">{tm.length} عضو</span>
+              <span aria-hidden className="hidden h-px flex-1 bg-border sm:block" />
+            </div>
+            <div className="mb-3 flex flex-wrap gap-2">
+              {th.map((h) => (
+                <span
+                  key={h.name}
+                  className="flex items-center gap-2 rounded-full bg-gold/10 py-1 pe-3 ps-1 text-sm"
+                >
+                  <Avatar name={h.name} size={26} />
+                  <b>{h.name}</b>
+                  <span className="text-[11px] text-gold">{titleOf(h)}</span>
+                </span>
+              ))}
+            </div>
+            <Names people={tm.filter((p) => !TEAM_HEADS.includes(p.role))} />
+          </div>
+        );
+      })}
+
+      {loose.length > 0 && (
+        <Group title={teams.length ? "أعضاء بدون فريق" : "الأعضاء"} names={loose} />
+      )}
+    </div>
+  );
+}
+
+function Group({ title, names }: { title: string; names: StructPerson[] }) {
+  return (
+    <div className="mt-7">
+      <div className="mb-3 flex items-center gap-3">
+        <h4 className="font-display text-lg font-bold">{title}</h4>
+        <span className="text-xs text-muted-foreground">{names.length}</span>
+        <span aria-hidden className="h-px flex-1 bg-border" />
+      </div>
+      <Names people={names} />
+    </div>
+  );
+}
+
+function Names({ people }: { people: StructPerson[] }) {
+  return (
+    <ul className="flex flex-wrap gap-2">
+      {people.map((p, i) => (
+        <motion.li
+          key={p.name}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease, delay: Math.min(i, 20) * 0.015 }}
+          className="flex items-center gap-2 rounded-full border border-border bg-background/40 py-1 pe-3 ps-1 text-sm"
+        >
+          <Avatar name={p.name} size={26} />
+          {p.name}
+        </motion.li>
+      ))}
+    </ul>
   );
 }

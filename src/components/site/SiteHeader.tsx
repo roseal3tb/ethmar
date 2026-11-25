@@ -10,8 +10,7 @@ import { cn } from "@/lib/utils";
 
 // Header items, in order: الرئيسية · التسجيل · مثمرينا (+ بوابة الأعضاء button)
 type Item =
-  | { kind: "link"; to: "/" | "/structure"; label: string }
-  | { kind: "register"; label: string };
+  { kind: "link"; to: "/" | "/structure"; label: string } | { kind: "register"; label: string };
 const items: Item[] = [
   { kind: "link", to: "/", label: "الرئيسية" },
   { kind: "register", label: "التسجيل" },
@@ -112,7 +111,7 @@ export function SiteHeader() {
               >
                 {active && (
                   <motion.span
-                    layoutId={reduce ? undefined : "nav-pill"}
+                    {...(reduce ? {} : { layoutId: "nav-pill" })}
                     className="absolute inset-0 rounded-full bg-mint"
                     transition={{ type: "spring", stiffness: 380, damping: 32 }}
                   />
