@@ -9,7 +9,7 @@
 // leadership can send it themselves. The caller's own token decides who they are;
 // `is_leadership()` (president, vice presidents, admins) decides whether they may do this.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { cors, json, layout, mailConfigured, portalOrigin, sendMail } from "../_shared/mail.ts";
+import { cors, json, layout, mailConfigured, portalOrigin, sendMail, type EmailCopy } from "../_shared/mail.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -36,14 +36,27 @@ Deno.serve(async (req) => {
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
   const { data: member } = await admin
     .from("members")
-    .select("id, user_id, full_name, active, must_change_password")
+    .select("id, user_id, full_name, title, committee_id, team_id, active, must_change_password")
     .eq("id", memberId)
     .maybeSingle();
   if (!member || !member.active) return json({ error: "member_not_found" }, 404);
   const { data: onFile } = await admin.from("member_emails").select("email").eq("member_id", memberId).maybeSingle();
 
   const origin = portalOrigin(req);
-  const firstName = String(member.full_name).split(" ")[0];
+  const fullName = String(member.full_name);
+  const [{ data: committee }, { data: team }] = await Promise.all([
+    member.committee_id
+      ? admin.from("committees").select("title").eq("id", member.committee_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    member.team_id
+      ? admin.from("teams").select("name").eq("id", member.team_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const place: [string, string][] = [
+    ["اللجنة", committee?.title ?? (member.committee_id ? "" : "قيادة المبادرة")],
+    ["الفريق", team?.name ?? ""],
+    ["المنصب", member.title ?? ""],
+  ];
 
   if (body.action === "invite") {
     const email = String(body.email || onFile?.email || "").trim().toLowerCase();
@@ -78,12 +91,14 @@ Deno.serve(async (req) => {
       .eq("id", memberId);
 
     const actionUrl = `${origin}/portal?token_hash=${link.properties.hashed_token}&type=${type}`;
-    return await deliver(email, actionUrl, {
-      title: "حياك الله في بوابة أعضاء إثمار",
-      intro: `أهلًا ${firstName}، انضافت لك عضوية في بوابة أعضاء مبادرة إثمار.`,
-      lines: ["من البوابة تتابع مهامك وساعاتك التطوعية وترتيبك بين الأعضاء."],
-      button: "تفعيل الحساب واختيار كلمة المرور",
-      note: "الرابط صالح لمدة محدودة ولمرة وحدة. إذا انتهى اطلب رابط جديد من قيادة المبادرة.",
+    return await deliver(email, "تفعيل حسابك في بوابة أعضاء إثمار", {
+      preheader: "فعّل حسابك واختر كلمة المرور، وتابع مهامك وساعاتك من مكان واحد.",
+      name: fullName,
+      intro: "انضافت لك عضوية في بوابة أعضاء مبادرة إثمار. من البوابة تسحب المهام وتسلّمها، وتتابع ساعاتك التطوعية وترتيبك.",
+      rows: [...place, ["بريد الدخول", email]],
+      button: choosePassword ? "تفعيل الحساب" : "الدخول للبوابة",
+      url: actionUrl,
+      note: "الرابط يشتغل مرة وحدة ولمدة محدودة. إذا انتهى اطلب رابط جديد من قيادة المبادرة.",
     });
   }
 
@@ -93,29 +108,28 @@ Deno.serve(async (req) => {
     if (error || !link) return json({ error: "reset_failed" }, 500);
     await admin.from("members").update({ must_change_password: true }).eq("id", memberId);
     const actionUrl = `${origin}/portal?token_hash=${link.properties.hashed_token}&type=recovery`;
-    return await deliver(onFile.email, actionUrl, {
-      title: "تعيين كلمة مرور جديدة",
-      intro: `أهلًا ${firstName}، هذا رابط تختار فيه كلمة مرور جديدة لبوابة أعضاء إثمار.`,
+    return await deliver(onFile.email, "كلمة مرور جديدة لبوابة أعضاء إثمار", {
+      preheader: "رابط تختار فيه كلمة مرور جديدة لحسابك.",
+      name: fullName,
+      intro: "هذا رابط تختار فيه كلمة مرور جديدة لحسابك في بوابة أعضاء إثمار.",
+      rows: [["بريد الدخول", onFile.email]],
       button: "اختيار كلمة مرور جديدة",
-      note: "إذا ما طلبت هذا، تجاهل الرسالة.",
+      url: actionUrl,
+      note: "الرابط يشتغل مرة وحدة ولمدة محدودة. إذا ما طلبت هذا، تجاهل الرسالة.",
     });
   }
 
   return json({ error: "unknown_action" }, 400);
 });
 
-async function deliver(
-  email: string,
-  actionUrl: string,
-  copy: { title: string; intro: string; lines?: string[]; button: string; note?: string },
-) {
-  if (!mailConfigured()) return json({ emailed: false, email, link: actionUrl });
+async function deliver(email: string, subject: string, copy: EmailCopy) {
+  if (!mailConfigured()) return json({ emailed: false, email, link: copy.url });
   try {
-    const { html, text } = layout({ ...copy, url: actionUrl });
-    await sendMail(email, copy.title, html, text);
+    const { html, text } = layout(copy);
+    await sendMail(email, subject, html, text);
     return json({ emailed: true, email });
   } catch (e) {
     console.error("mail failed", e);
-    return json({ emailed: false, email, link: actionUrl, mail_error: true });
+    return json({ emailed: false, email, link: copy.url, mail_error: true });
   }
 }

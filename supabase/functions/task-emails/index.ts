@@ -4,13 +4,13 @@
 // call it. Recipients are exactly the members `create_task` notified inside the portal (assigned
 // people, or everyone who may claim an open task), so the database stays the single rule-keeper.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { cors, json, layout, mailConfigured, portalOrigin, sendMail } from "../_shared/mail.ts";
+import { cors, hoursAr, json, layout, mailConfigured, portalOrigin, sendMail } from "../_shared/mail.ts";
 
 const AUDIENCE: Record<string, string> = {
-  committee: "مهمة جماعية للجنة",
-  team: "مهمة لفريقك",
-  people: "مهمة مسندة لك",
-  leaders: "مهمة لقادة اللجان",
+  committee: "جماعية لكل اللجنة",
+  team: "لفريقك",
+  people: "مسندة لك",
+  leaders: "لقادة اللجان",
 };
 
 Deno.serve(async (req) => {
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
   const { data: meId } = await caller.rpc("me_id");
   const { data: task } = await caller
     .from("tasks")
-    .select("id, title, description, audience, mode, hours, due_date, created_by, committee_id")
+    .select("id, title, description, audience, mode, hours, seats, due_date, created_by, committee_id, team_id")
     .eq("id", taskId)
     .maybeSingle();
   if (!task || !meId || task.created_by !== meId) return json({ error: "forbidden" }, 403);
@@ -46,12 +46,19 @@ Deno.serve(async (req) => {
   const ids = [...new Set((notes ?? []).map((n) => n.member_id))];
   if (!ids.length) return json({ sent: 0 });
 
-  const [{ data: emails }, { data: people }, { data: creator }] = await Promise.all([
-    admin.from("member_emails").select("member_id, email").in("member_id", ids),
-    admin.from("members").select("id, full_name, user_id").in("id", ids),
-    admin.from("members").select("full_name").eq("id", task.created_by).maybeSingle(),
-  ]);
-  const nameOf = new Map((people ?? []).map((p) => [p.id, String(p.full_name).split(" ")[0]]));
+  const [{ data: emails }, { data: people }, { data: creator }, { data: committee }, { data: team }] =
+    await Promise.all([
+      admin.from("member_emails").select("member_id, email").in("member_id", ids),
+      admin.from("members").select("id, full_name, user_id").in("id", ids),
+      admin.from("members").select("full_name").eq("id", task.created_by).maybeSingle(),
+      task.committee_id
+        ? admin.from("committees").select("title").eq("id", task.committee_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      task.team_id
+        ? admin.from("teams").select("name").eq("id", task.team_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+  const nameOf = new Map((people ?? []).map((p) => [p.id, String(p.full_name)]));
   const due = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", { weekday: "long", day: "numeric", month: "long" })
     .format(new Date(task.due_date + "T00:00:00"));
   const link = `${portalOrigin(req)}/portal/tasks?task=${taskId}`;
@@ -61,15 +68,28 @@ Deno.serve(async (req) => {
   // Only members who have been invited to the portal; the others would land on a login they can't use.
   const invited = new Set((people ?? []).filter((p) => p.user_id).map((p) => p.id));
   for (const e of (emails ?? []).filter((x) => invited.has(x.member_id))) {
+    const from = creator?.full_name ?? "قيادة المبادرة";
+    const seats = Number(task.seats ?? 0);
     const { html, text } = layout({
-      title: task.title,
-      intro: `أهلًا ${nameOf.get(e.member_id) ?? ""}، ${assigned ? "أُسندت لك مهمة جديدة" : "نزلت مهمة جديدة تقدر تسحبها"} من ${creator?.full_name ?? "قائد اللجنة"}.`,
-      lines: [
-        `${AUDIENCE[task.audience] ?? "مهمة"} · ${Number(task.hours)} ساعة · التسليم ${due}`,
-        ...(task.description ? [String(task.description).slice(0, 400)] : []),
+      preheader: `${task.title} · ${hoursAr(Number(task.hours))} · التسليم ${due}`,
+      name: nameOf.get(e.member_id) ?? "",
+      intro: assigned
+        ? `أسند لك ${from} مهمة جديدة.`
+        : `نزّل ${from} مهمة جديدة تقدر تسحبها.`,
+      rows: [
+        ["المهمة", String(task.title)],
+        ["اللجنة", task.audience === "leaders" ? "قيادة المبادرة" : String(committee?.title ?? "")],
+        ["لمن", task.audience === "team" && team?.name ? String(team.name) : (AUDIENCE[task.audience] ?? "")],
+        ["الساعات", `${hoursAr(Number(task.hours))} عند الاعتماد`],
+        ["التسليم", due],
+        ...(!assigned && seats ? ([["المقاعد", seats === 1 ? "مقعد واحد" : seats === 2 ? "مقعدين" : seats <= 10 ? `${seats} مقاعد` : `${seats} مقعد`]] as [string, string][]) : []),
       ],
-      button: assigned ? "فتح المهمة" : "اسحب المهمة",
-      note: assigned ? undefined : "المقاعد محدودة، وأول من يسحب ياخذ مقعده.",
+      body: task.description ? String(task.description).slice(0, 600) : undefined,
+      button: assigned ? "افتح المهمة" : "اسحب المهمة",
+      url: link,
+      note: assigned
+        ? "تنحسب الساعات تلقائيًا أول ما يعتمد قائدك تسليمك."
+        : "المقاعد محدودة وأول من يسحب ياخذ مقعده. تنحسب الساعات تلقائيًا أول ما ينعتمد تسليمك.",
     });
     try {
       await sendMail(e.email, `مهمة جديدة: ${task.title}`, html, text);
