@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
   const { data: member } = await admin
     .from("members")
-    .select("id, user_id, full_name, active")
+    .select("id, user_id, full_name, active, must_change_password")
     .eq("id", memberId)
     .maybeSingle();
   if (!member || !member.active) return json({ error: "member_not_found" }, 404);
@@ -63,7 +63,12 @@ Deno.serve(async (req) => {
       ({ data: link, error } = await admin.auth.admin.generateLink({ type, email }));
     }
     if (error || !link?.user) return json({ error: "email_in_use" }, 409);
-    await admin.from("members").update({ user_id: link.user.id, must_change_password: true }).eq("id", memberId);
+    // Someone who already chose a password just gets signed in; only new or pending members choose one.
+    const choosePassword = !member.user_id || member.must_change_password;
+    await admin
+      .from("members")
+      .update({ user_id: link.user.id, must_change_password: choosePassword })
+      .eq("id", memberId);
 
     const actionUrl = `${origin}/portal?token_hash=${link.properties.hashed_token}&type=${type}`;
     return await deliver(email, actionUrl, {
