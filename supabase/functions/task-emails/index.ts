@@ -4,12 +4,24 @@
 // call it. Recipients are exactly the members `create_task` notified inside the portal (assigned
 // people, or everyone who may claim an open task), so the database stays the single rule-keeper.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { cors, hoursAr, json, layout, mailConfigured, portalOrigin, sendMail } from "../_shared/mail.ts";
+import {
+  chips,
+  cors,
+  countWord,
+  hoursAr,
+  json,
+  layout,
+  mailConfigured,
+  noteCard,
+  portalOrigin,
+  sendMail,
+  stats,
+} from "../_shared/mail.ts";
 
 const AUDIENCE: Record<string, string> = {
   committee: "جماعية لكل اللجنة",
   team: "لفريقك",
-  people: "مسندة لك",
+  people: "لك بالاسم",
   leaders: "لقادة اللجان",
 };
 
@@ -59,8 +71,12 @@ Deno.serve(async (req) => {
         : Promise.resolve({ data: null }),
     ]);
   const nameOf = new Map((people ?? []).map((p) => [p.id, String(p.full_name)]));
-  const due = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", { weekday: "long", day: "numeric", month: "long" })
-    .format(new Date(task.due_date + "T00:00:00"));
+  const dueDate = new Date(task.due_date + "T00:00:00");
+  const fmt = (o: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", o).format(dueDate);
+  const due = fmt({ weekday: "long", day: "numeric", month: "long" });
+  const dueDay = fmt({ weekday: "long" });
+  const dueMonth = fmt({ month: "long" });
   const link = `${portalOrigin(req)}/portal/tasks?task=${taskId}`;
   const assigned = task.mode === "assigned";
 
@@ -69,27 +85,48 @@ Deno.serve(async (req) => {
   const invited = new Set((people ?? []).filter((p) => p.user_id).map((p) => p.id));
   for (const e of (emails ?? []).filter((x) => invited.has(x.member_id))) {
     const from = creator?.full_name ?? "قيادة المبادرة";
+    const first = String(nameOf.get(e.member_id) ?? "").split(" ")[0];
+    const hours = Number(task.hours);
     const seats = Number(task.seats ?? 0);
+    const where =
+      task.audience === "leaders"
+        ? "من قيادة المبادرة"
+        : committee?.title
+          ? `من ${committee.title}`
+          : "";
+    const tiles = [
+      { value: String(hours), label: `${countWord(hours, "ساعات", "ساعة")} عند الاعتماد`, gold: true },
+      { value: String(Number(task.due_date.slice(8))), label: `${dueDay} · ${dueMonth}` },
+      ...(!assigned && seats
+        ? [{ value: String(seats), label: countWord(seats, "مقاعد متاحة", "مقعد متاح") }]
+        : []),
+    ];
     const { html, text } = layout({
-      preheader: `${task.title} · ${hoursAr(Number(task.hours))} · التسليم ${due}`,
-      name: nameOf.get(e.member_id) ?? "",
+      preheader: `${task.title} · ${hoursAr(hours)} · التسليم ${due}`,
+      hero: assigned ? "مهمة جديدة لك" : "مهمة جديدة تنتظرك",
+      heroSub: where || undefined,
+      eyebrow: `مرحبًا ${first}`,
+      heading: String(task.title),
       intro: assigned
-        ? `أسند لك ${from} مهمة جديدة.`
-        : `نزّل ${from} مهمة جديدة تقدر تسحبها.`,
-      rows: [
-        ["المهمة", String(task.title)],
-        ["اللجنة", task.audience === "leaders" ? "قيادة المبادرة" : String(committee?.title ?? "")],
-        ["لمن", task.audience === "team" && team?.name ? String(team.name) : (AUDIENCE[task.audience] ?? "")],
-        ["الساعات", `${hoursAr(Number(task.hours))} عند الاعتماد`],
-        ["التسليم", due],
-        ...(!assigned && seats ? ([["المقاعد", seats === 1 ? "مقعد واحد" : seats === 2 ? "مقعدين" : seats <= 10 ? `${seats} مقاعد` : `${seats} مقعد`]] as [string, string][]) : []),
+        ? `أسند لك ${from} هذي المهمة، وتنحسب ساعاتها أول ما ينعتمد تسليمك.`
+        : `نزّل ${from} مهمة جديدة ${task.audience === "team" ? "لفريقك" : task.audience === "leaders" ? "لقادة اللجان" : "للجنة"}، وتقدر تسحبها الحين.`,
+      blocks: [
+        chips([
+          task.audience === "team" && team?.name ? String(team.name) : (AUDIENCE[task.audience] ?? ""),
+          assigned ? "مسندة مباشرة" : "مفتوحة للسحب",
+        ]),
+        stats(tiles),
+        ...(task.description ? [noteCard("وش المطلوب؟", String(task.description).slice(0, 600))] : []),
       ],
-      body: task.description ? String(task.description).slice(0, 600) : undefined,
+      textDetails: [
+        `الساعات: ${hoursAr(hours)} عند الاعتماد`,
+        `التسليم: ${due}`,
+        ...(!assigned && seats ? [`المقاعد: ${seats}`] : []),
+        ...(task.description ? ["", String(task.description).slice(0, 600)] : []),
+      ],
       button: assigned ? "افتح المهمة" : "اسحب المهمة",
       url: link,
-      note: assigned
-        ? "تنحسب الساعات تلقائيًا أول ما يعتمد قائدك تسليمك."
-        : "المقاعد محدودة وأول من يسحب ياخذ مقعده. تنحسب الساعات تلقائيًا أول ما ينعتمد تسليمك.",
+      note: assigned ? undefined : "المقاعد محدودة وأول من يسحب ياخذ مقعده.",
     });
     try {
       await sendMail(e.email, `مهمة جديدة: ${task.title}`, html, text);

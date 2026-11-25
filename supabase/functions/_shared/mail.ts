@@ -27,7 +27,7 @@ export async function sendMail(to: string, subject: string, html: string, text: 
   await smtp().sendMail({ from, to, subject, html, text });
 }
 
-export { hoursAr, layout, SITE } from "./template.ts";
+export { chips, countWord, hoursAr, layout, memberCard, noteCard, SITE, stats, steps } from "./template.ts";
 export type { EmailCopy } from "./template.ts";
 
 export const cors = {

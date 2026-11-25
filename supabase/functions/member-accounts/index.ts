@@ -9,7 +9,17 @@
 // leadership can send it themselves. The caller's own token decides who they are;
 // `is_leadership()` (president, vice presidents, admins) decides whether they may do this.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { cors, json, layout, mailConfigured, portalOrigin, sendMail, type EmailCopy } from "../_shared/mail.ts";
+import {
+  cors,
+  json,
+  layout,
+  mailConfigured,
+  memberCard,
+  portalOrigin,
+  sendMail,
+  steps,
+  type EmailCopy,
+} from "../_shared/mail.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -36,7 +46,7 @@ Deno.serve(async (req) => {
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
   const { data: member } = await admin
     .from("members")
-    .select("id, user_id, full_name, title, committee_id, team_id, active, must_change_password")
+    .select("id, user_id, full_name, title, member_code, committee_id, team_id, active, must_change_password")
     .eq("id", memberId)
     .maybeSingle();
   if (!member || !member.active) return json({ error: "member_not_found" }, 404);
@@ -52,11 +62,16 @@ Deno.serve(async (req) => {
       ? admin.from("teams").select("name").eq("id", member.team_id).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
-  const place: [string, string][] = [
-    ["اللجنة", committee?.title ?? (member.committee_id ? "" : "قيادة المبادرة")],
-    ["الفريق", team?.name ?? ""],
-    ["المنصب", member.title ?? ""],
-  ];
+  const firstName = fullName.split(" ")[0];
+  const place = [
+    committee?.title ?? (member.committee_id ? "" : "قيادة المبادرة"),
+    team?.name ?? "",
+    member.title ?? "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const card = (email: string) =>
+    memberCard({ name: fullName, place, code: member.member_code, email });
 
   if (body.action === "invite") {
     const email = String(body.email || onFile?.email || "").trim().toLowerCase();
@@ -91,15 +106,39 @@ Deno.serve(async (req) => {
       .eq("id", memberId);
 
     const actionUrl = `${origin}/portal?token_hash=${link.properties.hashed_token}&type=${type}`;
-    return await deliver(email, "تفعيل حسابك في بوابة أعضاء إثمار", {
-      preheader: "فعّل حسابك واختر كلمة المرور، وتابع مهامك وساعاتك من مكان واحد.",
-      name: fullName,
-      intro: "انضافت لك عضوية في بوابة أعضاء مبادرة إثمار. من البوابة تسحب المهام وتسلّمها، وتتابع ساعاتك التطوعية وترتيبك.",
-      rows: [...place, ["بريد الدخول", email]],
-      button: choosePassword ? "تفعيل الحساب" : "الدخول للبوابة",
-      url: actionUrl,
-      note: "الرابط يشتغل مرة وحدة ولمدة محدودة. إذا انتهى اطلب رابط جديد من قيادة المبادرة.",
-    });
+    const copy: EmailCopy = choosePassword
+      ? {
+          preheader: "حسابك في بوابة أعضاء إثمار جاهز، فعّله واختر كلمة مرورك.",
+          hero: "حياك الله في إثمار",
+          heroSub: "مكانك لمهامك وساعاتك التطوعية وترتيبك",
+          eyebrow: `مرحبًا ${firstName}`,
+          heading: "حسابك في البوابة جاهز",
+          intro:
+            "انضافت لك عضوية في بوابة أعضاء مبادرة إثمار. منها تسحب المهام وتسلّمها، وتنحسب ساعاتك أول ما يعتمدها قائدك.",
+          blocks: [card(email), steps(["افتح الرابط", "اختر كلمة مرورك", "اسحب مهمتك"])],
+          textDetails: [place, `بريد الدخول: ${email}`],
+          button: "فعّل حسابك",
+          url: actionUrl,
+          note: "الرابط يشتغل مرة وحدة ولمدة محدودة. إذا انتهى اطلب رابط جديد من قيادة المبادرة.",
+        }
+      : {
+          preheader: "رابط يدخلك بوابة أعضاء إثمار مباشرة.",
+          hero: "رابط دخولك",
+          heroSub: "لبوابة أعضاء إثمار",
+          eyebrow: `مرحبًا ${firstName}`,
+          heading: "ادخل حسابك بضغطة",
+          intro: "هذا رابط يدخلك البوابة مباشرة بدون كلمة مرور. بعدها تقدر تدخل بكلمة مرورك المعتادة.",
+          blocks: [card(email)],
+          textDetails: [place, `بريد الدخول: ${email}`],
+          button: "ادخل البوابة",
+          url: actionUrl,
+          note: "الرابط يشتغل مرة وحدة ولمدة محدودة.",
+        };
+    return await deliver(
+      email,
+      choosePassword ? "حسابك في بوابة أعضاء إثمار جاهز" : "رابط دخولك لبوابة أعضاء إثمار",
+      copy,
+    );
   }
 
   if (body.action === "reset") {
@@ -110,10 +149,14 @@ Deno.serve(async (req) => {
     const actionUrl = `${origin}/portal?token_hash=${link.properties.hashed_token}&type=recovery`;
     return await deliver(onFile.email, "كلمة مرور جديدة لبوابة أعضاء إثمار", {
       preheader: "رابط تختار فيه كلمة مرور جديدة لحسابك.",
-      name: fullName,
-      intro: "هذا رابط تختار فيه كلمة مرور جديدة لحسابك في بوابة أعضاء إثمار.",
-      rows: [["بريد الدخول", onFile.email]],
-      button: "اختيار كلمة مرور جديدة",
+      hero: "كلمة مرور جديدة",
+      heroSub: "لحسابك في بوابة أعضاء إثمار",
+      eyebrow: `مرحبًا ${firstName}`,
+      heading: "اختر كلمة مرورك الجديدة",
+      intro: "افتح الرابط واختر كلمة مرور جديدة، وبعدها تدخل فيها البوابة على طول.",
+      blocks: [card(onFile.email)],
+      textDetails: [place, `بريد الدخول: ${onFile.email}`],
+      button: "اختر كلمة المرور",
       url: actionUrl,
       note: "الرابط يشتغل مرة وحدة ولمدة محدودة. إذا ما طلبت هذا، تجاهل الرسالة.",
     });
