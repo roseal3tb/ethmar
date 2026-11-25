@@ -1,5 +1,15 @@
 import { motion } from "framer-motion";
-import { Check, Copy, KeyRound, Loader2, MailCheck, Search, Send, UserCog } from "lucide-react";
+import {
+  Check,
+  Copy,
+  KeyRound,
+  Loader2,
+  MailCheck,
+  RotateCcw,
+  Search,
+  Send,
+  UserCog,
+} from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import {
@@ -29,7 +39,7 @@ export function AccountsPage() {
   const [committee, setCommittee] = useState("all");
   const [q, setQ] = useState("");
   const [action, setAction] = useState<Action>(null);
-  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState<false | "invite" | "remind">(false);
 
   const rows = useMemo(() => {
     let r = dir?.members ?? [];
@@ -48,7 +58,9 @@ export function AccountsPage() {
   if (isError) return <ErrorState onRetry={() => refetch()} />;
   if (!dir) return <PageSkeleton />;
   const withCount = dir.members.filter(isActive).length;
-  const ready = dir.members.filter((m) => !isActive(m) && emails.data?.[m.id]);
+  // New invitations go only to people who never got one; a second email would cancel the first link.
+  const ready = dir.members.filter((m) => !m.has_account && emails.data?.[m.id]);
+  const pending = dir.members.filter((m) => m.has_account && !isActive(m) && emails.data?.[m.id]);
   const noEmail = dir.members.filter((m) => !isActive(m) && !emails.data?.[m.id]).length;
 
   return (
@@ -58,10 +70,24 @@ export function AccountsPage() {
         title="حسابات الأعضاء"
         subtitle={`${withCount} من ${dir.members.length} فعّلوا حساباتهم`}
         actions={
-          ready.length > 0 ? (
-            <button type="button" className="p-btn" onClick={() => setBulkOpen(true)}>
-              <Send className="size-4" /> دعوة الكل ({ready.length})
-            </button>
+          ready.length > 0 || pending.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {pending.length > 0 && (
+                <button
+                  type="button"
+                  className="p-btn-ghost h-11"
+                  onClick={() => setBulkOpen("remind")}
+                  title="يوصلهم رابط جديد، والرابط القديم يوقف"
+                >
+                  <RotateCcw className="size-4" /> تذكير اللي ما فعّلوا ({pending.length})
+                </button>
+              )}
+              {ready.length > 0 && (
+                <button type="button" className="p-btn" onClick={() => setBulkOpen("invite")}>
+                  <Send className="size-4" /> دعوة الكل ({ready.length})
+                </button>
+              )}
+            </div>
           ) : undefined
         }
       />
@@ -185,9 +211,15 @@ export function AccountsPage() {
           )}
         </DialogContent>
       </Dialog>
-      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+      <Dialog open={!!bulkOpen} onOpenChange={(o) => !o && setBulkOpen(false)}>
         <DialogContent className="rounded-3xl border-[var(--p-line-strong)] bg-[#08291f] sm:max-w-md">
-          {bulkOpen && <BulkInvite members={ready} onClose={() => setBulkOpen(false)} />}
+          {bulkOpen && (
+            <BulkInvite
+              kind={bulkOpen}
+              members={bulkOpen === "remind" ? pending : ready}
+              onClose={() => setBulkOpen(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
@@ -335,7 +367,15 @@ function AccountDialog({
 }
 
 /** Invites everyone without an account whose email is on file, one after another. */
-function BulkInvite({ members, onClose }: { members: Member[]; onClose: () => void }) {
+function BulkInvite({
+  kind,
+  members,
+  onClose,
+}: {
+  kind: "invite" | "remind";
+  members: Member[];
+  onClose: () => void;
+}) {
   const qc = useQueryClient();
   const [state, setState] = useState<"idle" | "running" | "done">("idle");
   const [done, setDone] = useState(0);
@@ -365,9 +405,13 @@ function BulkInvite({ members, onClose }: { members: Member[]; onClose: () => vo
   return (
     <div className="space-y-4">
       <DialogHeader className="text-start sm:text-start">
-        <DialogTitle className="font-display text-xl">دعوة الكل</DialogTitle>
-        <DialogDescription className="text-[var(--p-soft)]">
-          بيوصل إيميل دعوة لـ {members.length} عضو عندهم إيميل مسجّل وما فعّلوا حساباتهم بعد.
+        <DialogTitle className="font-display text-xl">
+          {kind === "remind" ? "تذكير اللي ما فعّلوا" : "دعوة الكل"}
+        </DialogTitle>
+        <DialogDescription className="leading-7 text-[var(--p-soft)]">
+          {kind === "remind"
+            ? `بيوصل رابط جديد لـ ${members.length} عضو انرسلت لهم دعوة وما فعّلوا. الرابط القديم اللي عندهم يوقف.`
+            : `بيوصل إيميل دعوة لـ ${members.length} عضو عندهم إيميل مسجّل وما انرسلت لهم دعوة قبل.`}
         </DialogDescription>
       </DialogHeader>
       {state !== "idle" && (
@@ -385,6 +429,9 @@ function BulkInvite({ members, onClose }: { members: Member[]; onClose: () => vo
             )}
           </p>
         </div>
+      )}
+      {state === "running" && (
+        <p className="text-xs text-[var(--p-dim)]">خلّي الصفحة مفتوحة لين يخلص الإرسال.</p>
       )}
       {state === "done" && links.length > 0 && (
         <p className="rounded-xl bg-[rgb(232_194_122/0.1)] p-3 text-sm text-[var(--p-warn)]">

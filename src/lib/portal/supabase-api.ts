@@ -164,7 +164,7 @@ export const supabaseApi: PortalApi = {
     ) as LeaderRow[];
     return rows.map((r) => ({
       ...r,
-      rank: num(r.rank),
+      rank: r.rank == null ? null : Number(r.rank),
       hours: r.hours == null ? null : num(r.hours),
     }));
   },

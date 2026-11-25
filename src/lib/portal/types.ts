@@ -114,7 +114,8 @@ export interface Summary {
 }
 
 export interface LeaderRow {
-  rank: number;
+  /** Null until the member has approved hours in the period. */
+  rank: number | null;
   member_id: string;
   full_name: string;
   committee_title: string | null;

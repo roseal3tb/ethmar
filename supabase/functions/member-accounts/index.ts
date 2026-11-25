@@ -64,7 +64,14 @@ Deno.serve(async (req) => {
     }
     if (error || !link?.user) return json({ error: "email_in_use" }, 409);
     // Someone who already chose a password just gets signed in; only new or pending members choose one.
-    const choosePassword = !member.user_id || member.must_change_password;
+    // A login that was never confirmed or never used may carry a password nobody here set
+    // (e.g. a sign-up made with this address): the member must replace it.
+    const choosePassword =
+      !member.user_id ||
+      member.must_change_password ||
+      link.user.id !== member.user_id ||
+      !link.user.email_confirmed_at ||
+      !link.user.last_sign_in_at;
     await admin
       .from("members")
       .update({ user_id: link.user.id, must_change_password: choosePassword })

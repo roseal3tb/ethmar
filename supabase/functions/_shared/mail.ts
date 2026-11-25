@@ -62,5 +62,5 @@ export const json = (body: unknown, status = 200) =>
 /** The portal's address, taken from the browser that called us (works for preview and production domains). */
 export function portalOrigin(req: Request): string {
   const o = req.headers.get("origin") ?? "";
-  return /^https?:\/\/[^/]+$/.test(o) ? o : (Deno.env.get("PORTAL_URL") ?? "https://ethmar.lovable.app");
+  return /^https?:\/\/[^/]+$/.test(o) ? o : (Deno.env.get("PORTAL_URL") ?? "https://ethmarspp.vercel.app");
 }

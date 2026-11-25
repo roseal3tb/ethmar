@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Crown, Search, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { addDays, monthStart, todayISO } from "@/lib/portal/dates";
 import { boardOf } from "@/lib/portal/permissions";
 import { useLeaderboard, useSummary } from "@/lib/portal/queries";
@@ -62,7 +63,9 @@ export function LeaderboardPage() {
   const rows = lb.data ?? [];
   const meRow = rows.find((r) => r.is_me);
   const shown = q.trim() ? rows.filter((r) => r.full_name.includes(q.trim())) : rows;
-  const podium = q.trim() ? [] : rows.filter((r) => r.rank <= 3).slice(0, 3);
+  const ranked = rows.filter((r) => r.rank != null);
+  const podium =
+    q.trim() || ranked.length < 3 ? [] : ranked.filter((r) => r.rank! <= 3).slice(0, 3);
   const restAll = q.trim() ? shown : rows.filter((r) => !podium.includes(r));
   const LIMIT = 17;
   const rest = showAll || q.trim() ? restAll : restAll.filter((r, i) => i < LIMIT || r.is_me);
@@ -109,9 +112,26 @@ export function LeaderboardPage() {
               />
               <p className="relative text-[13px] text-[var(--p-dim)]">ترتيبك · {range.label}</p>
               <div className="relative mt-2 flex items-baseline gap-3">
-                <b className="font-display text-5xl font-extrabold">#{meRow.rank}</b>
-                <span className="text-sm text-[var(--p-soft)]">من {fmt(rows.length)}</span>
+                {meRow.rank != null ? (
+                  <>
+                    <b className="font-display text-5xl font-extrabold">#{meRow.rank}</b>
+                    <span className="text-sm text-[var(--p-soft)]">من {fmt(rows.length)}</span>
+                  </>
+                ) : (
+                  <b className="font-display text-2xl font-extrabold leading-snug">
+                    ما بدأت في هذي الفترة
+                  </b>
+                )}
               </div>
+              {meRow.rank == null && (
+                <Link
+                  to="/portal/tasks"
+                  search={{ view: "open" }}
+                  className="relative mt-2 inline-flex items-center gap-1 text-sm font-bold text-[var(--p-gold-soft)] hover:underline"
+                >
+                  أول ساعة معتمدة تحطك في الترتيب، شوف المهام المتاحة
+                </Link>
+              )}
               <p className="relative mt-3 text-sm">
                 رصيدك في هذي الفترة: <b>{hoursLabel(meRow.hours ?? 0)}</b>
               </p>
@@ -191,6 +211,11 @@ export function LeaderboardPage() {
           ) : (
             <>
               {podium.length === 3 && <Podium rows={podium} />}
+              {!q.trim() && ranked.length === 0 && (
+                <p className="p-well mb-3 px-4 py-3 text-center text-sm leading-7 text-[var(--p-soft)]">
+                  ما فيه ساعات معتمدة في هذي الفترة بعد. أول ما تنعتمد أول مهمة يبدأ الترتيب.
+                </p>
+              )}
               <ol className="mt-2 flex flex-col gap-1">
                 {rest.map((r, i) => (
                   <motion.li
@@ -206,7 +231,7 @@ export function LeaderboardPage() {
                     )}
                   >
                     <b className="w-8 shrink-0 text-center font-display text-[var(--p-dim)]">
-                      {r.rank}
+                      {r.rank ?? "–"}
                     </b>
                     <Avatar name={r.full_name} size={36} />
                     <span className="min-w-0 flex-1">

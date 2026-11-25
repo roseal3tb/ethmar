@@ -565,7 +565,7 @@ export const mockApi: PortalApi = {
     return rows.map((r) => {
       const tier = tierFor(r.sem);
       return {
-        rank: 1 + rows.filter((x) => x.h > r.h).length,
+        rank: r.h > 0 ? 1 + rows.filter((x) => x.h > r.h).length : null,
         member_id: r.m.id,
         full_name: r.m.full_name,
         committee_title: structureCommittees.find((c) => c.id === r.m.committee_id)?.title ?? null,
