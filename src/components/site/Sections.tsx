@@ -802,7 +802,8 @@ export function Partners({ withHead = true }: { withHead?: boolean }) {
           </Link>
         </Reveal>
       </div>
-      <div className="relative mt-12 [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
+      {/* py-3: room for the hover lift; the side-fade mask clips anything outside this box */}
+      <div className="relative mt-9 py-3 [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
         <ul
           className={cn(
             "flex gap-4",
@@ -811,14 +812,19 @@ export function Partners({ withHead = true }: { withHead?: boolean }) {
               : "w-max animate-marquee hover:[animation-play-state:paused]",
           )}
         >
+          {/* Cards grow with long names; the flex row stretches every card to the tallest one. */}
           {row.map((p, i) => (
-            <li key={i} className="w-60 shrink-0" aria-hidden={i >= partners.length || undefined}>
+            <li
+              key={i}
+              className="flex w-60 shrink-0"
+              aria-hidden={i >= partners.length || undefined}
+            >
               {p.logo ? (
-                <div className="flex h-36 items-center justify-center rounded-3xl border border-border bg-card p-6">
+                <div className="flex min-h-36 w-full items-center justify-center rounded-3xl border border-border bg-card p-6">
                   <img src={p.logo} alt={p.nameAr ?? p.name} className="max-h-14" />
                 </div>
               ) : (
-                <div className="h-36">
+                <div className="min-h-36 w-full">
                   <PartnerCard name={p.name} nameAr={p.nameAr} />
                 </div>
               )}
