@@ -362,7 +362,7 @@ export function HomePage() {
                     {items.map((it) => (
                       <li
                         key={it.key}
-                        className="flex items-center gap-3 border-b border-[var(--p-line)] py-3 text-sm last:border-0"
+                        className="p-row -mx-2 flex items-center gap-3 rounded-xl border-b border-[var(--p-line)] px-2 py-3 text-sm last:border-0"
                       >
                         <span
                           className={`grid size-7 shrink-0 place-items-center rounded-full ${it.gold ? "bg-[rgb(198_164_92/0.14)] text-[var(--p-gold-soft)]" : "bg-[rgb(200_222_211/0.08)] text-[var(--p-soft)]"}`}

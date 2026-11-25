@@ -158,7 +158,7 @@ export function HoursPage() {
                     {list.map((h) => (
                       <li
                         key={h.id}
-                        className="flex items-center gap-3 border-b border-[var(--p-line)] py-3 last:border-0"
+                        className="p-row -mx-2 flex items-center gap-3 rounded-xl border-b border-[var(--p-line)] px-2 py-3 last:border-0"
                       >
                         <span
                           className="grid size-10 shrink-0 place-items-center rounded-xl bg-[rgb(198_164_92/0.12)] font-display font-bold text-[var(--p-gold-soft)]"

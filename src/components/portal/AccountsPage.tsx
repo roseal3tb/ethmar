@@ -120,7 +120,7 @@ export function AccountsPage() {
         </div>
         <ul className="divide-y divide-[var(--p-line)]">
           {rows.map((m) => (
-            <li key={m.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+            <li key={m.id} className="p-row flex flex-wrap items-center gap-3 px-4 py-3">
               <Avatar name={m.full_name} size={36} />
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-sm">{m.full_name}</b>

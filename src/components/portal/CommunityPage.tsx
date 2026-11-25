@@ -433,7 +433,7 @@ function CommitteeView({
                     key={h.id}
                     id={`m-${h.id}`}
                     className={cn(
-                      "flex items-center gap-2 rounded-full bg-[rgb(198_164_92/0.1)] py-1 pe-3 ps-1",
+                      "p-chip-hover flex items-center gap-2 rounded-full border border-transparent bg-[rgb(198_164_92/0.1)] py-1 pe-3 ps-1",
                       h.id === focus && "ring-2 ring-[var(--p-gold)]",
                     )}
                   >
@@ -508,7 +508,7 @@ function MemberChip({
       variants={itemVariants}
       id={`m-${m.id}`}
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border border-[var(--p-line)] bg-[rgb(200_222_211/0.03)] py-1 pe-3 ps-1 text-sm",
+        "p-chip-hover inline-flex items-center gap-2 rounded-full border border-[var(--p-line)] bg-[rgb(200_222_211/0.03)] py-1 pe-3 ps-1 text-sm",
         m.id === me.id && "border-[rgb(198_164_92/0.4)]",
         focused && "ring-2 ring-[var(--p-gold)]",
       )}

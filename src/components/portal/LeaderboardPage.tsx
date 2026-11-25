@@ -139,7 +139,10 @@ export function LeaderboardPage() {
                 ["silver", "فضي", "20–39"],
                 ["bronze", "برونزي", "0–19"],
               ].map(([id, name, range]) => (
-                <li key={id} className="flex items-center justify-between">
+                <li
+                  key={id}
+                  className="p-row -mx-2 flex items-center justify-between rounded-lg px-2 py-1"
+                >
                   <span className="flex items-center gap-2" style={{ color: TIER_COLOR[id!] }}>
                     <TierGem tierId={id!} className="size-3.5" /> {name}
                   </span>
@@ -266,7 +269,7 @@ function Podium({ rows }: { rows: LeaderRow[] }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: EASE, delay: 0.25 + i * 0.08 }}
-            className="relative flex flex-col items-center gap-2"
+            className="p-lift relative flex flex-col items-center gap-2 transition-transform duration-300"
           >
             {r.rank === 1 && (
               <Crown className="absolute -top-6 size-5 text-[var(--p-gold)]" aria-hidden="true" />

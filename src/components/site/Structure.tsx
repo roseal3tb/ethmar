@@ -110,7 +110,10 @@ export function StructureTree() {
             { k: "قائد وقائدة", v: leaders },
             { k: "عضو وعضوة", v: structurePeople.length - leaders },
           ].map((s) => (
-            <div key={s.k} className="bg-card px-3 py-5">
+            <div
+              key={s.k}
+              className="bg-card px-3 py-5 transition-colors duration-300 hover:bg-secondary"
+            >
               <dt className="text-xs text-muted-foreground sm:text-sm">{s.k}</dt>
               <dd className="mt-1 font-display text-3xl font-black text-mint">{s.v}</dd>
             </div>
@@ -125,7 +128,7 @@ export function StructureTree() {
         </h2>
         {president && (
           <Reveal>
-            <div className="flex items-center gap-4 rounded-3xl border border-gold/35 bg-card px-6 py-4">
+            <div className="flex items-center gap-4 rounded-3xl border border-gold/35 bg-card px-6 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-gold/60">
               <Avatar name={president.name} size={56} ring="var(--gold)" />
               <div>
                 <p className="font-display text-xl font-extrabold">{president.name}</p>
@@ -146,7 +149,7 @@ export function StructureTree() {
                 aria-hidden
                 className="absolute -top-6 left-1/2 hidden h-6 w-px bg-border sm:block"
               />
-              <div className="flex items-center gap-3 rounded-3xl border border-border bg-card px-5 py-4">
+              <div className="flex items-center gap-3 rounded-3xl border border-border bg-card px-5 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-mint/25">
                 <Avatar name={p.name} size={46} />
                 <div>
                   <p className="font-display font-bold">{p.name}</p>
@@ -349,7 +352,7 @@ function CommitteeDetail({ c }: { c: StructCommittee }) {
         {heads.map((p) => (
           <div
             key={p.name}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-background/40 p-3.5"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-background/40 p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-mint/25 hover:bg-background/60"
           >
             <Avatar
               name={p.name}
@@ -380,7 +383,7 @@ function CommitteeDetail({ c }: { c: StructCommittee }) {
               {th.map((h) => (
                 <span
                   key={h.name}
-                  className="flex items-center gap-2 rounded-full bg-gold/10 py-1 pe-3 ps-1 text-sm"
+                  className="flex items-center gap-2 rounded-full bg-gold/10 py-1 pe-3 ps-1 text-sm transition-colors duration-200 hover:bg-gold/20"
                 >
                   <Avatar name={h.name} size={26} />
                   <b>{h.name}</b>
@@ -422,7 +425,7 @@ function Names({ people }: { people: StructPerson[] }) {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease, delay: Math.min(i, 20) * 0.015 }}
-          className="flex items-center gap-2 rounded-full border border-border bg-background/40 py-1 pe-3 ps-1 text-sm"
+          className="flex items-center gap-2 rounded-full border border-border bg-background/40 py-1 pe-3 ps-1 text-sm transition-colors duration-200 hover:border-mint/25 hover:bg-secondary"
         >
           <Avatar name={p.name} size={26} />
           {p.name}
