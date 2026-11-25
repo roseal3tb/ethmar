@@ -1,323 +1,308 @@
+import { motion } from "framer-motion";
+import { Crown, Search, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
-import { Info, Medal } from "lucide-react";
-import { committeeName, members, months, tiers, type Member } from "@/data/demo";
-import { useDemoAuth } from "@/lib/demo-auth";
+import { addDays, monthStart, todayISO } from "@/lib/portal/dates";
+import { boardOf } from "@/lib/portal/permissions";
+import { useLeaderboard, useSummary } from "@/lib/portal/queries";
+import { useMe } from "@/lib/portal/session";
+import type { Board, LeaderRow } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
-import { MemberAvatar, PageHeader, Panel, TierBadge, rankMembers, tierStyle } from "./shared";
+import {
+  Avatar,
+  EASE,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  Panel,
+  Segmented,
+  Skeleton,
+  TIER_COLOR,
+  TierBadge,
+  TierGem,
+  fmt,
+  hoursLabel,
+} from "./ui";
 
-const podiumStyle = [
-  { h: "h-40 md:h-48", ring: "ring-gold", label: "الأول", medal: "tier-gold text-deep" },
-  {
-    h: "h-28 md:h-36",
-    ring: "ring-[oklch(0.8_0.01_240)]",
-    label: "الثاني",
-    medal: "tier-silver text-deep",
-  },
-  {
-    h: "h-20 md:h-28",
-    ring: "ring-[oklch(0.65_0.09_55)]",
-    label: "الثالث",
-    medal: "tier-bronze text-ivory",
-  },
-];
+type Period = "month" | "last" | "semester";
+const MONTH = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", {
+  month: "long",
+  year: "numeric",
+});
 
 export function LeaderboardPage() {
-  const { member: me } = useDemoAuth();
-  const reduce = useReducedMotion();
-  const [month, setMonth] = useState(months[months.length - 1].id);
-  const ranked = useMemo(() => rankMembers(members, month), [month]);
-  const monthLabel = months.find((m) => m.id === month)?.label ?? "";
-  const top = ranked.slice(0, 3);
-  const max = ranked[0]?.monthly[month] ?? 1;
-  const myRank = me ? ranked.findIndex((m) => m.id === me.id) + 1 : 0;
+  const me = useMe();
+  const summary = useSummary();
+  const myBoard = boardOf(me.role);
+  const [board, setBoard] = useState<Board>(myBoard ?? "members");
+  const [period, setPeriod] = useState<Period>("month");
+  const [q, setQ] = useState("");
+  const [showAll, setShowAll] = useState(false);
+  const today = todayISO();
+  const sem = summary.data?.semester;
 
-  // Visual order: 2nd, 1st, 3rd (1st in the centre; RTL renders the first item on the right).
-  const podiumOrder = [1, 0, 2].filter((i) => top[i]);
+  const range = useMemo(() => {
+    if (period === "month")
+      return {
+        from: monthStart(today),
+        to: today,
+        label: MONTH.format(new Date(today + "T00:00:00")),
+      };
+    if (period === "last") {
+      const end = addDays(monthStart(today), -1);
+      return { from: monthStart(end), to: end, label: MONTH.format(new Date(end + "T00:00:00")) };
+    }
+    return {
+      from: sem?.starts_on ?? monthStart(today),
+      to: sem?.ends_on ?? today,
+      label: sem?.name ?? "الفصل",
+    };
+  }, [period, today, sem]);
+
+  const lb = useLeaderboard(board, range.from, range.to);
+  const rows = lb.data ?? [];
+  const meRow = rows.find((r) => r.is_me);
+  const shown = q.trim() ? rows.filter((r) => r.full_name.includes(q.trim())) : rows;
+  const podium = q.trim() ? [] : rows.filter((r) => r.rank <= 3).slice(0, 3);
+  const restAll = q.trim() ? shown : rows.filter((r) => !podium.includes(r));
+  const LIMIT = 17;
+  const rest = showAll || q.trim() ? restAll : restAll.filter((r, i) => i < LIMIT || r.is_me);
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="لوحة الصدارة" text="ترتيب الأعضاء حسب الساعات التطوعية الشهرية">
-        <div
-          role="radiogroup"
-          aria-label="اختيار الشهر"
-          className="inline-flex rounded-full border border-border bg-card p-1 shadow-card"
-        >
-          {months.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              role="radio"
-              aria-checked={month === m.id}
-              onClick={() => setMonth(m.id)}
-              className={cn(
-                "relative rounded-full px-3.5 py-2 text-sm font-bold transition-colors duration-300 sm:px-4",
-                month === m.id
-                  ? "text-primary-foreground"
-                  : "text-foreground/70 hover:bg-muted hover:text-foreground",
-              )}
-            >
-              {month === m.id && (
-                <motion.span
-                  layoutId={reduce ? undefined : "month-pill"}
-                  className="absolute inset-0 rounded-full bg-primary"
-                  transition={{ type: "spring", stiffness: 420, damping: 36 }}
-                />
-              )}
-              <span className="relative">{m.label.split(" ")[0]}</span>
-            </button>
-          ))}
-        </div>
-      </PageHeader>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        icon={Trophy}
+        title="لوحة الصدارة"
+        subtitle="الترتيب حسب الساعات المعتمدة · كل واحد يشوف رقمه بس"
+        actions={
+          <Segmented
+            id="lb-period"
+            size="sm"
+            value={period}
+            onChange={setPeriod}
+            options={[
+              { value: "month", label: "هذا الشهر" },
+              { value: "last", label: "الشهر الماضي" },
+              { value: "semester", label: "الفصل كامل" },
+            ]}
+          />
+        }
+      />
 
-      <p className="-mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="h-1.5 w-1.5 rounded-full bg-gold" aria-hidden />
-        بيانات نموذجية للعرض، وليست سجلات أو سياسات معتمدة
-      </p>
-
-      {/* Podium */}
-      <section
-        aria-label={`المراكز الثلاثة الأولى — ${monthLabel}`}
-        className="bg-emerald-soft grain relative overflow-hidden rounded-[2rem] px-4 pb-0 pt-8 text-ivory md:px-10 md:pt-10"
-      >
-        <div
-          className="pointer-events-none absolute left-1/2 top-0 h-64 w-64 -translate-x-1/2 rounded-full bg-gold/15 blur-3xl"
-          aria-hidden
-        />
-        <p className="relative text-center text-sm text-mint/80">أبطال {monthLabel}</p>
-        <ol className="relative mt-6 grid grid-cols-3 items-end gap-2 md:gap-6">
-          {podiumOrder.map((idx) => {
-            const m = top[idx];
-            const st = podiumStyle[idx];
-            return (
-              <li
-                key={`${month}-${m.id}`}
-                className="flex flex-col items-center text-center"
-                aria-label={`المركز ${st.label}: ${m.name}`}
-              >
-                <motion.div
-                  initial={reduce ? false : { opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: idx * 0.08 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className="relative">
-                    <MemberAvatar
-                      name={m.name}
-                      id={m.id}
-                      size={idx === 0 ? "xl" : "lg"}
-                      className={cn("ring-4", st.ring)}
-                    />
-                    <span
-                      className={cn(
-                        "absolute -bottom-1 left-1/2 flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full font-display text-sm font-black shadow-lg",
-                        st.medal,
-                      )}
-                    >
-                      {idx + 1}
-                    </span>
-                  </div>
-                  <p className="mt-4 line-clamp-1 max-w-full font-display text-sm font-bold md:text-base">
-                    {m.name}
-                  </p>
-                  <p className="text-xs text-mint/70">لجنة {committeeName(m.committee)}</p>
-                  <p className="mt-1.5 font-display text-2xl font-black text-ivory">
-                    {m.monthly[month]}{" "}
-                    <span className="text-xs font-medium text-ivory/60">ساعة</span>
-                  </p>
-                </motion.div>
-                <motion.div
-                  initial={reduce ? false : { scaleY: 0 }}
-                  animate={{ scaleY: 1 }}
-                  transition={{ duration: 0.6, delay: 0.15 + idx * 0.08, ease: [0.22, 1, 0.36, 1] }}
-                  className={cn(
-                    "mt-4 w-full origin-bottom rounded-t-2xl border border-b-0 border-ivory/15 bg-ivory/[0.08]",
-                    st.h,
-                  )}
-                >
-                  <div className="flex justify-center pt-3">
-                    <TierBadge hours={m.totalHours} size="sm" />
-                  </div>
-                </motion.div>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
-
-      {me && myRank > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-primary/20 bg-secondary/50 p-4 md:p-5">
-          <div className="flex items-center gap-3">
-            <MemberAvatar name={me.name} id={me.id} />
-            <div>
-              <p className="text-sm font-bold text-primary">ترتيبك في {monthLabel}</p>
-              <p className="text-xs text-muted-foreground">
-                {me.monthly[month] ?? 0} ساعة هذا الشهر · {me.totalHours} ساعة إجمالًا
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
+        <aside className="flex flex-col gap-5 lg:col-span-4">
+          <Segmented
+            id="lb-board"
+            className="w-full [&>button]:flex-1 [&>button]:justify-center"
+            value={board}
+            onChange={setBoard}
+            options={[
+              { value: "members", label: "الأعضاء" },
+              { value: "leaders", label: "القادة" },
+            ]}
+          />
+          {meRow ? (
+            <section className="p-card relative overflow-hidden p-6">
+              <div
+                aria-hidden="true"
+                className="absolute inset-x-0 top-0 h-1"
+                style={{ background: TIER_COLOR[meRow.tier_id] }}
+              />
+              <p className="relative text-[13px] text-[var(--p-dim)]">ترتيبك · {range.label}</p>
+              <div className="relative mt-2 flex items-baseline gap-3">
+                <b className="font-display text-5xl font-extrabold">#{meRow.rank}</b>
+                <span className="text-sm text-[var(--p-soft)]">من {fmt(rows.length)}</span>
+              </div>
+              <p className="relative mt-3 text-sm">
+                رصيدك في هذي الفترة: <b>{hoursLabel(meRow.hours ?? 0)}</b>
               </p>
+              <div className="relative mt-4">
+                <TierBadge tierId={meRow.tier_id} name={`مستواك ${meRow.tier_name}`} />
+              </div>
+            </section>
+          ) : (
+            <Panel>
+              <p className="text-sm leading-7 text-[var(--p-soft)]">
+                {myBoard
+                  ? "ما ظهرت في هذي اللوحة، لوحتك هي «" +
+                    (myBoard === "leaders" ? "القادة" : "الأعضاء") +
+                    "»."
+                  : "قيادة المبادرة خارج المنافسة، والأرقام التفصيلية في صفحة الإحصائيات."}
+              </p>
+            </Panel>
+          )}
+          <Panel title="المستويات">
+            <ul className="flex flex-col gap-2.5 text-sm">
+              {[
+                ["diamond", "ماسي", "100+"],
+                ["platinum", "بلاتيني", "70–99"],
+                ["gold", "ذهبي", "40–69"],
+                ["silver", "فضي", "20–39"],
+                ["bronze", "برونزي", "0–19"],
+              ].map(([id, name, range]) => (
+                <li key={id} className="flex items-center justify-between">
+                  <span className="flex items-center gap-2" style={{ color: TIER_COLOR[id!] }}>
+                    <TierGem tierId={id!} className="size-3.5" /> {name}
+                  </span>
+                  <span className="text-[var(--p-dim)]" dir="ltr">
+                    {range}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-xs leading-6 text-[var(--p-dim)]">
+              المستوى يُحسب من ساعات الفصل الحالي.
+            </p>
+          </Panel>
+        </aside>
+
+        <section
+          className="p-card p-4 sm:p-6 lg:col-span-8"
+          aria-label={`لوحة ${board === "leaders" ? "القادة" : "الأعضاء"}`}
+        >
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-display text-lg font-bold">
+              {board === "leaders" ? "القادة" : "الأعضاء"} · {range.label}
+            </h2>
+            <label className="relative w-full sm:w-56">
+              <Search className="pointer-events-none absolute top-1/2 start-3.5 size-4 -translate-y-1/2 text-[var(--p-dim)]" />
+              <input
+                className="p-input h-10 min-h-10 ps-10 text-sm"
+                placeholder="ابحث عن اسم"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </label>
+          </div>
+
+          {lb.isError ? (
+            <ErrorState onRetry={() => lb.refetch()} />
+          ) : lb.isPending ? (
+            <div className="space-y-2">
+              <Skeleton className="h-40" />
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-14" />
+              ))}
             </div>
-          </div>
-          <span className="font-display text-3xl font-black text-primary" dir="ltr">
-            #{myRank}
-          </span>
-        </div>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Full ranking */}
-        <Panel title={`الترتيب الكامل — ${monthLabel}`} className="lg:col-span-2">
-          <div className="-mx-2 overflow-x-auto">
-            <table className="w-full min-w-[20rem] border-separate border-spacing-y-1.5 text-sm">
-              <caption className="sr-only">ترتيب الأعضاء حسب ساعات {monthLabel}</caption>
-              <thead>
-                <tr className="text-xs text-muted-foreground">
-                  <th scope="col" className="px-2 pb-1 text-start font-medium">
-                    #
-                  </th>
-                  <th scope="col" className="px-2 pb-1 text-start font-medium">
-                    العضو
-                  </th>
-                  <th scope="col" className="hidden px-2 pb-1 text-start font-medium md:table-cell">
-                    اللجنة
-                  </th>
-                  <th scope="col" className="px-2 pb-1 text-start font-medium">
-                    الساعات الشهرية
-                  </th>
-                  <th scope="col" className="hidden px-2 pb-1 text-start font-medium sm:table-cell">
-                    المستوى
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {ranked.map((m, i) => (
-                  <Row
-                    key={m.id}
-                    m={m}
-                    rank={i + 1}
-                    month={month}
-                    max={max}
-                    isMe={m.id === me?.id}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-
-        {/* Tiers */}
-        <Panel title="مستويات العضوية">
-          <ul className="space-y-2.5">
-            {[...tiers].reverse().map((t) => {
-              const Icon = tierStyle[t.id].icon;
-              const next = tiers[tiers.indexOf(t) + 1];
-              return (
-                <li
-                  key={t.id}
-                  className="group flex items-center gap-3 rounded-2xl border border-border/70 p-3 transition-all duration-300 hover:-translate-x-0.5 hover:border-primary/25 hover:bg-sage"
-                >
-                  <span
+          ) : rows.length === 0 ? (
+            <EmptyState icon={Trophy} title="ما فيه ترتيب بعد" />
+          ) : (
+            <>
+              {podium.length === 3 && <Podium rows={podium} />}
+              <ol className="mt-2 flex flex-col gap-1">
+                {rest.map((r, i) => (
+                  <motion.li
+                    key={r.member_id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, ease: EASE, delay: Math.min(i, 12) * 0.025 }}
                     className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform duration-300 group-hover:scale-110",
-                      tierStyle[t.id].cls,
-                      tierStyle[t.id].text,
+                      "flex items-center gap-3 rounded-2xl px-3 py-2.5",
+                      r.is_me
+                        ? "border border-[rgb(198_164_92/0.35)] bg-[rgb(198_164_92/0.08)]"
+                        : "hover:bg-[rgb(200_222_211/0.04)]",
                     )}
                   >
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-foreground">{t.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {next
-                        ? `من ${t.minHours} إلى ${next.minHours - 1} ساعة`
-                        : `${t.minHours} ساعة فأكثر`}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            العتبات قيم افتراضية قابلة للتعديل، ولا تمثل سياسة معتمدة من إثمار، يُحتسب المستوى من
-            إجمالي الساعات
-          </p>
-        </Panel>
+                    <b className="w-8 shrink-0 text-center font-display text-[var(--p-dim)]">
+                      {r.rank}
+                    </b>
+                    <Avatar name={r.full_name} size={36} />
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate text-sm">
+                        {r.full_name}
+                        {r.is_me && (
+                          <span className="ms-1.5 text-xs text-[var(--p-gold-soft)]">أنت</span>
+                        )}
+                      </b>
+                      <span className="block truncate text-xs text-[var(--p-dim)]">
+                        {[
+                          r.committee_title?.replace(/^(لجنة|اللجنة) /, ""),
+                          r.team_name,
+                          board === "leaders" ? r.title : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </span>
+                    {r.is_me && r.hours != null && (
+                      <span className="text-sm font-bold">{hoursLabel(r.hours)}</span>
+                    )}
+                    <TierBadge
+                      tierId={r.tier_id}
+                      name={r.tier_name}
+                      className="hidden sm:inline-flex"
+                    />
+                    <TierGem tierId={r.tier_id} className="size-4 sm:hidden" />
+                  </motion.li>
+                ))}
+              </ol>
+              {!showAll && !q.trim() && restAll.length > rest.length && (
+                <button
+                  type="button"
+                  onClick={() => setShowAll(true)}
+                  className="p-btn-ghost mt-3 w-full"
+                >
+                  عرض الترتيب كامل ({fmt(rows.length)})
+                </button>
+              )}
+            </>
+          )}
+        </section>
       </div>
     </div>
   );
 }
 
-function Row({
-  m,
-  rank,
-  month,
-  max,
-  isMe,
-}: {
-  m: Member;
-  rank: number;
-  month: string;
-  max: number;
-  isMe: boolean;
-}) {
-  const hours = m.monthly[month] ?? 0;
-  const cell = cn(
-    "px-2 py-2.5 transition-colors duration-200 first:rounded-s-2xl last:rounded-e-2xl",
-    isMe ? "bg-secondary/70" : "bg-[oklch(0.985_0.006_100)] group-hover:bg-sage",
-  );
+function Podium({ rows }: { rows: LeaderRow[] }) {
+  const order = [rows[1]!, rows[0]!, rows[2]!];
+  const heights = [96, 128, 76];
   return (
-    <tr aria-current={isMe ? "true" : undefined} className="group">
-      <td className={cell}>
-        {rank <= 3 ? (
-          <span
-            className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-full",
-              podiumStyle[rank - 1].medal,
-            )}
-            aria-label={`المركز ${rank}`}
+    <div
+      className="mb-4 grid grid-cols-3 items-end gap-2 sm:gap-4"
+      aria-label="المراكز الثلاثة الأولى"
+    >
+      {order.map((r, i) => (
+        <div key={r.member_id} className="flex flex-col items-center gap-2 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: EASE, delay: 0.25 + i * 0.08 }}
+            className="relative flex flex-col items-center gap-2"
           >
-            <Medal className="h-3.5 w-3.5" />
-          </span>
-        ) : (
-          <span className="flex h-7 w-7 items-center justify-center font-display font-bold text-muted-foreground">
-            {rank}
-          </span>
-        )}
-      </td>
-      <td className={cell}>
-        <div className="flex items-center gap-2.5">
-          <MemberAvatar name={m.name} id={m.id} size="sm" className="ring-0" />
-          <div className="min-w-0">
-            <p className="truncate font-bold text-foreground">
-              {m.name}
-              {isMe && (
-                <span className="ms-1.5 rounded-full bg-primary px-1.5 py-px text-[10px] text-primary-foreground">
-                  أنت
-                </span>
+            {r.rank === 1 && (
+              <Crown className="absolute -top-6 size-5 text-[var(--p-gold)]" aria-hidden="true" />
+            )}
+            <Avatar name={r.full_name} size={r.rank === 1 ? 64 : 52} ring={TIER_COLOR[r.tier_id]} />
+            <b className="line-clamp-1 text-[13px] sm:text-sm">
+              {r.full_name}
+              {r.is_me && <span className="block text-[11px] text-[var(--p-gold-soft)]">أنت</span>}
+            </b>
+            <span className="line-clamp-1 text-[11px] text-[var(--p-dim)]">
+              {r.committee_title?.replace(/^(لجنة|اللجنة) /, "")}
+            </span>
+          </motion.div>
+          <motion.div
+            className={cn(
+              "grid w-full place-items-center rounded-t-2xl border border-b-0",
+              r.rank === 1
+                ? "border-[rgb(198_164_92/0.35)] bg-[linear-gradient(180deg,rgb(198_164_92/0.18),rgb(198_164_92/0.03))]"
+                : "border-[var(--p-line)] bg-[linear-gradient(180deg,rgb(200_222_211/0.08),transparent)]",
+            )}
+            style={{ height: heights[i], transformOrigin: "bottom" }}
+            initial={{ scaleY: 0 }}
+            animate={{ scaleY: 1 }}
+            transition={{ duration: 0.7, ease: EASE, delay: i * 0.08 }}
+          >
+            <b
+              className={cn(
+                "font-display text-3xl font-extrabold",
+                r.rank === 1 ? "text-[var(--p-gold-soft)]" : "text-[var(--p-soft)]",
               )}
-            </p>
-            <p className="text-xs text-muted-foreground md:hidden">
-              لجنة {committeeName(m.committee)}
-            </p>
-          </div>
+            >
+              {r.rank}
+            </b>
+          </motion.div>
         </div>
-      </td>
-      <td className={cn(cell, "hidden text-muted-foreground md:table-cell")}>
-        {committeeName(m.committee)}
-      </td>
-      <td className={cell}>
-        <div className="flex items-center gap-2">
-          <span className="w-7 font-display font-black text-primary">{hours}</span>
-          <span className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-primary/10 lg:block">
-            <span
-              className="block h-full rounded-full bg-primary"
-              style={{ width: `${(hours / max) * 100}%` }}
-            />
-          </span>
-        </div>
-      </td>
-      <td className={cn(cell, "hidden sm:table-cell")}>
-        <TierBadge hours={m.totalHours} size="sm" />
-      </td>
-    </tr>
+      ))}
+    </div>
   );
 }

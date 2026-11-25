@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AccountPage } from "@/components/portal/AccountPage";
+import { HomePage } from "@/components/portal/HomePage";
 
 export const Route = createFileRoute("/portal/")({
   head: () => ({ meta: [{ title: "حسابي | بوابة أعضاء إثمار" }] }),
-  component: AccountPage,
+  component: HomePage,
 });

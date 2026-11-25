@@ -12,7 +12,16 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as PartnersRouteImport } from './routes/partners'
+import { Route as PortalRouteImport } from './routes/portal'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as StructureRouteImport } from './routes/structure'
+import { Route as PortalIndexRouteImport } from './routes/portal/index'
+import { Route as PortalAccountsRouteImport } from './routes/portal/accounts'
+import { Route as PortalCommunityRouteImport } from './routes/portal/community'
+import { Route as PortalHoursRouteImport } from './routes/portal/hours'
+import { Route as PortalLeaderboardRouteImport } from './routes/portal/leaderboard'
+import { Route as PortalStatsRouteImport } from './routes/portal/stats'
+import { Route as PortalTasksRouteImport } from './routes/portal/tasks'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -29,44 +38,156 @@ const PartnersRoute = PartnersRouteImport.update({
   path: '/partners',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalRoute = PortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
   getParentRoute: () => rootRouteImport,
+} as any)
+const StructureRoute = StructureRouteImport.update({
+  id: '/structure',
+  path: '/structure',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalIndexRoute = PortalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalAccountsRoute = PortalAccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalCommunityRoute = PortalCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalHoursRoute = PortalHoursRouteImport.update({
+  id: '/hours',
+  path: '/hours',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalLeaderboardRoute = PortalLeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalStatsRoute = PortalStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalTasksRoute = PortalTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => PortalRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/partners': typeof PartnersRoute
+  '/portal': typeof PortalRouteWithChildren
   '/projects': typeof ProjectsRoute
+  '/structure': typeof StructureRoute
+  '/portal/accounts': typeof PortalAccountsRoute
+  '/portal/community': typeof PortalCommunityRoute
+  '/portal/hours': typeof PortalHoursRoute
+  '/portal/leaderboard': typeof PortalLeaderboardRoute
+  '/portal/stats': typeof PortalStatsRoute
+  '/portal/tasks': typeof PortalTasksRoute
+  '/portal/': typeof PortalIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/partners': typeof PartnersRoute
   '/projects': typeof ProjectsRoute
+  '/structure': typeof StructureRoute
+  '/portal/accounts': typeof PortalAccountsRoute
+  '/portal/community': typeof PortalCommunityRoute
+  '/portal/hours': typeof PortalHoursRoute
+  '/portal/leaderboard': typeof PortalLeaderboardRoute
+  '/portal/stats': typeof PortalStatsRoute
+  '/portal/tasks': typeof PortalTasksRoute
+  '/portal': typeof PortalIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/partners': typeof PartnersRoute
+  '/portal': typeof PortalRouteWithChildren
   '/projects': typeof ProjectsRoute
+  '/structure': typeof StructureRoute
+  '/portal/accounts': typeof PortalAccountsRoute
+  '/portal/community': typeof PortalCommunityRoute
+  '/portal/hours': typeof PortalHoursRoute
+  '/portal/leaderboard': typeof PortalLeaderboardRoute
+  '/portal/stats': typeof PortalStatsRoute
+  '/portal/tasks': typeof PortalTasksRoute
+  '/portal/': typeof PortalIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/partners' | '/projects'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/partners'
+    | '/portal'
+    | '/projects'
+    | '/structure'
+    | '/portal/accounts'
+    | '/portal/community'
+    | '/portal/hours'
+    | '/portal/leaderboard'
+    | '/portal/stats'
+    | '/portal/tasks'
+    | '/portal/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/partners' | '/projects'
-  id: '__root__' | '/' | '/about' | '/partners' | '/projects'
+  to:
+    | '/'
+    | '/about'
+    | '/partners'
+    | '/projects'
+    | '/structure'
+    | '/portal/accounts'
+    | '/portal/community'
+    | '/portal/hours'
+    | '/portal/leaderboard'
+    | '/portal/stats'
+    | '/portal/tasks'
+    | '/portal'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/partners'
+    | '/portal'
+    | '/projects'
+    | '/structure'
+    | '/portal/accounts'
+    | '/portal/community'
+    | '/portal/hours'
+    | '/portal/leaderboard'
+    | '/portal/stats'
+    | '/portal/tasks'
+    | '/portal/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   PartnersRoute: typeof PartnersRoute
+  PortalRoute: typeof PortalRouteWithChildren
   ProjectsRoute: typeof ProjectsRoute
+  StructureRoute: typeof StructureRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -92,6 +213,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PartnersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal': {
+      id: '/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof PortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects': {
       id: '/projects'
       path: '/projects'
@@ -99,14 +227,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/structure': {
+      id: '/structure'
+      path: '/structure'
+      fullPath: '/structure'
+      preLoaderRoute: typeof StructureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal/': {
+      id: '/portal/'
+      path: '/'
+      fullPath: '/portal/'
+      preLoaderRoute: typeof PortalIndexRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/accounts': {
+      id: '/portal/accounts'
+      path: '/accounts'
+      fullPath: '/portal/accounts'
+      preLoaderRoute: typeof PortalAccountsRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/community': {
+      id: '/portal/community'
+      path: '/community'
+      fullPath: '/portal/community'
+      preLoaderRoute: typeof PortalCommunityRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/hours': {
+      id: '/portal/hours'
+      path: '/hours'
+      fullPath: '/portal/hours'
+      preLoaderRoute: typeof PortalHoursRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/leaderboard': {
+      id: '/portal/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/portal/leaderboard'
+      preLoaderRoute: typeof PortalLeaderboardRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/stats': {
+      id: '/portal/stats'
+      path: '/stats'
+      fullPath: '/portal/stats'
+      preLoaderRoute: typeof PortalStatsRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/tasks': {
+      id: '/portal/tasks'
+      path: '/tasks'
+      fullPath: '/portal/tasks'
+      preLoaderRoute: typeof PortalTasksRouteImport
+      parentRoute: typeof PortalRoute
+    }
   }
 }
+
+interface PortalRouteChildren {
+  PortalAccountsRoute: typeof PortalAccountsRoute
+  PortalCommunityRoute: typeof PortalCommunityRoute
+  PortalHoursRoute: typeof PortalHoursRoute
+  PortalLeaderboardRoute: typeof PortalLeaderboardRoute
+  PortalStatsRoute: typeof PortalStatsRoute
+  PortalTasksRoute: typeof PortalTasksRoute
+  PortalIndexRoute: typeof PortalIndexRoute
+}
+
+const PortalRouteChildren: PortalRouteChildren = {
+  PortalAccountsRoute: PortalAccountsRoute,
+  PortalCommunityRoute: PortalCommunityRoute,
+  PortalHoursRoute: PortalHoursRoute,
+  PortalLeaderboardRoute: PortalLeaderboardRoute,
+  PortalStatsRoute: PortalStatsRoute,
+  PortalTasksRoute: PortalTasksRoute,
+  PortalIndexRoute: PortalIndexRoute,
+}
+
+const PortalRouteWithChildren =
+  PortalRoute._addFileChildren(PortalRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   PartnersRoute: PartnersRoute,
+  PortalRoute: PortalRouteWithChildren,
   ProjectsRoute: ProjectsRoute,
+  StructureRoute: StructureRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

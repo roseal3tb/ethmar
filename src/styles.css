@@ -296,3 +296,266 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ───────────── Members portal (dark, calm) ─────────────
+   Scoped to .portal so the public site keeps its own palette; shadcn
+   components inside the portal pick these variables up automatically. */
+:root {
+  --p-bg: #031f19;
+  --p-surface: #08291f;
+  --p-raised: #0c3328;
+  --p-line: rgb(200 222 211 / 0.1);
+  --p-line-strong: rgb(200 222 211 / 0.18);
+  --p-text: #f6f5ef;
+  --p-soft: #c8ded3;
+  --p-dim: #9db8ab;
+  --p-gold: #c6a45c;
+  --p-gold-soft: #e2c98f;
+  --p-ok: #8fd9b3;
+  --p-warn: #e8c27a;
+  --p-bad: #f2a58e;
+}
+.portal {
+  --background: var(--p-bg);
+  --foreground: var(--p-text);
+  --card: var(--p-surface);
+  --card-foreground: var(--p-text);
+  --popover: #0a2d24;
+  --popover-foreground: var(--p-text);
+  --primary: var(--p-soft);
+  --primary-foreground: var(--p-bg);
+  --secondary: rgb(200 222 211 / 0.08);
+  --secondary-foreground: var(--p-soft);
+  --muted: rgb(200 222 211 / 0.06);
+  --muted-foreground: var(--p-dim);
+  --accent: rgb(200 222 211 / 0.08);
+  --accent-foreground: var(--p-text);
+  --destructive: #e07a63;
+  --destructive-foreground: var(--p-bg);
+  --border: var(--p-line);
+  --input: var(--p-line-strong);
+  --ring: var(--p-gold);
+
+  background: var(--p-bg);
+  color: var(--p-text);
+  color-scheme: dark;
+}
+.portal ::selection {
+  background: rgb(198 164 92 / 0.35);
+  color: var(--p-text);
+}
+/* Dialogs, popovers and toasts render at body level: while the portal is on screen,
+   give the whole body the portal tokens so they match. */
+body:has(.portal) {
+  color: #f6f5ef;
+  --background: #031f19;
+  --foreground: #f6f5ef;
+  --card: #08291f;
+  --card-foreground: #f6f5ef;
+  --popover: #0a2d24;
+  --popover-foreground: #f6f5ef;
+  --primary: #c8ded3;
+  --primary-foreground: #031f19;
+  --secondary: rgb(200 222 211 / 0.08);
+  --secondary-foreground: #c8ded3;
+  --muted: rgb(200 222 211 / 0.06);
+  --muted-foreground: #9db8ab;
+  --accent: rgb(200 222 211 / 0.08);
+  --accent-foreground: #f6f5ef;
+  --destructive: #e07a63;
+  --border: rgb(200 222 211 / 0.12);
+  --input: rgb(200 222 211 / 0.18);
+  --ring: #c6a45c;
+  background: #031f19;
+  color-scheme: dark;
+}
+@utility p-card {
+  background: var(--p-surface);
+  border: 1px solid var(--p-line);
+  border-radius: 22px;
+}
+@utility p-well {
+  background: rgb(200 222 211 / 0.035);
+  border: 1px solid rgb(200 222 211 / 0.08);
+  border-radius: 16px;
+}
+@utility p-aurora {
+  background:
+    radial-gradient(ellipse 60% 45% at 85% -10%, rgb(143 217 179 / 0.1), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, rgb(198 164 92 / 0.06), transparent 70%);
+}
+@keyframes p-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@utility p-skeleton {
+  border-radius: 14px;
+  background: linear-gradient(
+    90deg,
+    rgb(200 222 211 / 0.05),
+    rgb(200 222 211 / 0.1),
+    rgb(200 222 211 / 0.05)
+  );
+  background-size: 200% 100%;
+  animation: p-shimmer 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .portal *,
+  .portal *::before,
+  .portal *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+@utility p-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding-inline: 1.25rem;
+  border-radius: 14px;
+  background: var(--p-soft);
+  color: var(--p-bg);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  transition:
+    background-color 0.2s,
+    transform 0.15s,
+    opacity 0.2s;
+  cursor: pointer;
+  &:hover {
+    background: #dcebe3;
+  }
+  &:active {
+    transform: scale(0.98);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+@utility p-btn-gold {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding-inline: 1.25rem;
+  border-radius: 14px;
+  background: var(--p-gold);
+  color: #1d1606;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  transition:
+    background-color 0.2s,
+    transform 0.15s;
+  cursor: pointer;
+  &:hover {
+    background: #d3b46f;
+  }
+  &:active {
+    transform: scale(0.98);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+@utility p-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding-inline: 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--p-line-strong);
+  color: var(--p-soft);
+  font-weight: 700;
+  font-size: 0.875rem;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+  cursor: pointer;
+  &:hover {
+    background: rgb(200 222 211 / 0.07);
+    color: var(--p-text);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+@utility p-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding-inline: 1rem;
+  border-radius: 12px;
+  border: 1px solid rgb(242 165 142 / 0.35);
+  color: var(--p-bad);
+  font-weight: 700;
+  font-size: 0.875rem;
+  transition: background-color 0.2s;
+  cursor: pointer;
+  &:hover {
+    background: rgb(242 165 142 / 0.08);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+@utility p-input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.625rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--p-line-strong);
+  background: rgb(200 222 211 / 0.04);
+  color: var(--p-text);
+  font-size: 0.9375rem;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s;
+  &::placeholder {
+    color: rgb(157 184 171 / 0.7);
+  }
+  &:focus {
+    outline: none;
+    border-color: var(--p-gold);
+    background: rgb(200 222 211 / 0.06);
+  }
+  &[aria-invalid="true"] {
+    border-color: var(--p-bad);
+  }
+}
+/* Toasts while the portal is open: dark, calm */
+body:has(.portal) [data-sonner-toaster] {
+  --normal-bg: #0c3328;
+  --normal-border: rgb(200 222 211 / 0.18);
+  --normal-text: #f6f5ef;
+  --success-bg: #0c3328;
+  --success-border: rgb(143 217 179 / 0.35);
+  --success-text: #f6f5ef;
+  --error-bg: #2a1a14;
+  --error-border: rgb(242 165 142 / 0.35);
+  --error-text: #f6f5ef;
+}
+body:has(.portal) [data-sonner-toast] [data-icon] {
+  color: #8fd9b3;
+}
+body:has(.portal) [data-sonner-toast] [data-button] {
+  background: #c8ded3;
+  color: #031f19;
+  font-weight: 700;
+}

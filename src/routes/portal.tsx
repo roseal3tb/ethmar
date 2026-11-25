@@ -1,49 +1,56 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
-import { Wordmark } from "@/components/site/Wordmark";
-import { LoginScreen } from "@/components/portal/LoginScreen";
-import { PortalShell } from "@/components/portal/PortalShell";
-import { useDemoAuth } from "@/lib/demo-auth";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  FirstPasswordScreen,
+  LoginScreen,
+  PortalLoading,
+  UnlinkedScreen,
+} from "@/components/portal/AuthScreens";
+import { PortalLayout } from "@/components/portal/PortalLayout";
+import { useMounted } from "@/components/portal/ui";
+import { PortalSessionProvider, useSession } from "@/lib/portal/session";
 
-// Members portal (demo). Layout route: shows the login screen until a demo member signs in,
-// then renders the portal shell with the active child page (حسابي، لوحة الصدارة، المجتمع، المهام، اللابات).
+// Members portal. The session lives in the browser (Supabase auth), so the gate renders on the client:
+// loading → login → first-password change → the portal itself.
 export const Route = createFileRoute("/portal")({
   head: () => ({
     meta: [
       { title: "بوابة الأعضاء | مبادرة إثمار" },
-      { name: "description", content: "بوابة أعضاء مبادرة إثمار — نسخة تجريبية" },
+      {
+        name: "description",
+        content: "بوابة أعضاء مبادرة إثمار: المهام والساعات التطوعية ولوحة الصدارة",
+      },
       { name: "robots", content: "noindex, nofollow" },
+      { name: "theme-color", content: "#031F19" },
       { property: "og:title", content: "بوابة الأعضاء | مبادرة إثمار" },
-      { property: "og:description", content: "بوابة أعضاء مبادرة إثمار — نسخة تجريبية" },
+      { property: "og:description", content: "بوابة أعضاء مبادرة إثمار" },
     ],
   }),
   component: PortalRoute,
 });
 
 function PortalRoute() {
-  const { ready, member } = useDemoAuth();
-
-  // Session is restored on the client only; show a neutral loading state meanwhile (and during SSR).
-  if (!ready) {
-    return (
-      <div
-        className="bg-hero grain flex min-h-screen flex-col items-center justify-center gap-6 text-ivory"
-        role="status"
-        aria-live="polite"
-      >
-        <Wordmark size="lg" affiliation={false} />
-        <span className="flex items-center gap-2 text-sm text-mint/80">
-          <Loader2 className="h-4 w-4 animate-spin" /> جارٍ تحميل البوابة…
-        </span>
-      </div>
-    );
-  }
-
-  if (!member) return <LoginScreen />;
-
   return (
-    <PortalShell>
+    <PortalSessionProvider>
+      <Gate />
+    </PortalSessionProvider>
+  );
+}
+
+function Gate() {
+  const mounted = useMounted();
+  const { status, me } = useSession();
+  const qc = useQueryClient();
+  if (!mounted || status === "loading") return <PortalLoading />;
+  if (status === "signed-out") return <LoginScreen />;
+  if (status === "unlinked" || !me) return <UnlinkedScreen />;
+  if (me.must_change_password)
+    return (
+      <FirstPasswordScreen onDone={() => qc.invalidateQueries({ queryKey: ["portal", "me"] })} />
+    );
+  return (
+    <PortalLayout>
       <Outlet />
-    </PortalShell>
+    </PortalLayout>
   );
 }
