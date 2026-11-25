@@ -53,6 +53,9 @@ export const MOCK_LOGINS: Record<string, string> = {
   "vp@ethmar.test": "غادة العتيبي",
 };
 
+/** Emails on file in the preview (member id → email). */
+const MOCK_EMAILS: Record<string, string> = {};
+
 const tierFor = (h: number) => [...TIERS].reverse().find((t) => h >= t.min_hours) ?? TIERS[0]!;
 const nextTier = (h: number) => TIERS.find((t) => t.min_hours > h) ?? null;
 
@@ -632,24 +635,31 @@ export const mockApi: PortalApi = {
   async memberEmails() {
     const me = meOrThrow();
     if (!isLeadership(me)) return {};
-    return Object.fromEntries(
-      Object.entries(MOCK_LOGINS).map(([email, name]) => [
-        s().members.find((m) => m.full_name === name)!.id,
-        email,
-      ]),
-    );
+    for (const [email, name] of Object.entries(MOCK_LOGINS)) {
+      const id = s().members.find((m) => m.full_name === name)!.id;
+      MOCK_EMAILS[id] ??= email;
+    }
+    return { ...MOCK_EMAILS };
   },
-  async createAccount(memberId) {
+  async inviteMember(memberId, email) {
     if (!isLeadership(meOrThrow())) throw new PortalError("forbidden");
     const m = s().members.find((x) => x.id === memberId)!;
-    if (m.has_account) throw new PortalError("already_has_account");
+    const to = (email ?? MOCK_EMAILS[memberId] ?? "").trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) throw new PortalError("invalid_email");
+    MOCK_EMAILS[memberId] = to;
     m.has_account = true;
     save();
-    return { password: "Kp7x-Qm4R-ze9T" };
+    return { emailed: true, email: to };
   },
-  async resetPassword() {
+  async resetPassword(memberId) {
     if (!isLeadership(meOrThrow())) throw new PortalError("forbidden");
-    return { password: "Wn3c-Hd8L-pa2Y" };
+    return { emailed: true, email: MOCK_EMAILS[memberId] ?? "" };
+  },
+  async verifyLink() {
+    throw new PortalError("link_expired");
+  },
+  async notifyTask() {
+    return { sent: 0 };
   },
 };
 

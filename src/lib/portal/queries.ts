@@ -91,7 +91,13 @@ export const useSetTaskStatus = () =>
   useRefreshingMutation((a: { taskId: string; status: TaskStatus }) =>
     api.setTaskStatus(a.taskId, a.status),
   );
-export const useCreateTask = () => useRefreshingMutation((t: NewTask) => api.createTask(t));
+export const useCreateTask = () =>
+  useRefreshingMutation(async (t: NewTask) => {
+    const id = await api.createTask(t);
+    // Emails go out in the background; the in-portal notifications already exist.
+    void api.notifyTask(id).catch(() => undefined);
+    return id;
+  });
 export const useMarkRead = () =>
   useRefreshingMutation((ids?: string[]) => api.markNotificationsRead(ids));
 
@@ -102,9 +108,9 @@ export function useAccountActions() {
     qc.invalidateQueries({ queryKey: k("emails") });
   };
   return {
-    create: useMutation({
-      mutationFn: (a: { memberId: string; email: string }) =>
-        api.createAccount(a.memberId, a.email),
+    invite: useMutation({
+      mutationFn: (a: { memberId: string; email?: string | undefined }) =>
+        api.inviteMember(a.memberId, a.email),
       onSuccess: done,
     }),
     reset: useMutation({

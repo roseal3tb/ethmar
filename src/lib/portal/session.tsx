@@ -1,12 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { api } from "./api";
-import type { Member } from "./types";
+import type { LinkType, Member } from "./types";
 
 type Status = "loading" | "signed-out" | "unlinked" | "ready";
 interface SessionValue {
   status: Status;
   me: Member | null;
+  /** The emailed link the page was opened with had expired or was already used. */
+  linkError: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -17,10 +19,27 @@ export function PortalSessionProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const [uid, setUid] = useState<string | null | undefined>(undefined);
 
+  const [linkError, setLinkError] = useState(false);
   useEffect(() => {
     let alive = true;
-    api
-      .currentUserId()
+    // Opened from an emailed invitation / password link: sign in with it first, then tidy the URL.
+    const params = new URLSearchParams(window.location.search);
+    const tokenHash = params.get("token_hash");
+    const type = params.get("type") as LinkType | null;
+    const fromLink =
+      tokenHash && type && ["invite", "magiclink", "recovery"].includes(type)
+        ? api.verifyLink(tokenHash, type).catch(() => {
+            if (alive) setLinkError(true);
+          })
+        : Promise.resolve();
+    if (tokenHash) {
+      params.delete("token_hash");
+      params.delete("type");
+      const q = params.toString();
+      window.history.replaceState(null, "", window.location.pathname + (q ? `?${q}` : ""));
+    }
+    fromLink
+      .then(() => api.currentUserId())
       .then((id) => alive && setUid(id))
       .catch(() => alive && setUid(null));
     const off = api.onAuthChange((id) => {
@@ -54,6 +73,7 @@ export function PortalSessionProvider({ children }: { children: ReactNode }) {
   const value: SessionValue = {
     status,
     me: meQuery.data ?? null,
+    linkError,
     signOut: async () => {
       await api.signOut();
       qc.removeQueries({ queryKey: ["portal"] });

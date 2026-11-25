@@ -33,6 +33,8 @@ const MESSAGES: Record<string, string> = {
   already_has_account: "هذا العضو عنده حساب",
   no_account: "هذا العضو ما عنده حساب بعد",
   member_not_found: "العضو غير موجود",
+  link_expired: "الرابط انتهى أو انستخدم قبل",
+  reset_failed: "تعذّر إنشاء الرابط، حاول مرة ثانية",
 };
 
 export function errorMessage(e: unknown): string {

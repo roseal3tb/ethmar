@@ -115,6 +115,7 @@ function Field({
 }
 
 export function LoginScreen() {
+  const { linkError } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -152,6 +153,15 @@ export function LoginScreen() {
           <h2 className="font-display text-2xl font-extrabold">تسجيل الدخول</h2>
           <p className="text-sm text-[var(--p-dim)]">ادخل بالبريد اللي سجّلت فيه بالمبادرة</p>
         </div>
+        {linkError && (
+          <p
+            role="alert"
+            className="rounded-xl bg-[rgb(232_194_122/0.1)] px-3 py-2 text-sm leading-6 text-[var(--p-warn)]"
+          >
+            الرابط انتهى أو انستخدم قبل. لو اخترت كلمة مرور ادخل فيها، وإلا اطلب رابط جديد من قيادة
+            المبادرة.
+          </p>
+        )}
         <Field label="البريد الإلكتروني" icon={Mail}>
           <input
             className="p-input ps-11"
@@ -199,7 +209,7 @@ export function LoginScreen() {
           دخول
         </button>
         <p className="text-center text-[13px] leading-6 text-[var(--p-dim)]">
-          ما عندك حساب أو نسيت كلمة المرور؟ تواصل مع قيادة المبادرة وتنشأ لك كلمة مرور جديدة.
+          ما وصلتك دعوة أو نسيت كلمة المرور؟ تواصل مع قيادة المبادرة ويوصلك رابط على إيميلك.
         </p>
       </form>
       {usingMock && (

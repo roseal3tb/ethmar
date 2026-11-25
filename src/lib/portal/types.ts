@@ -165,6 +165,14 @@ export interface Structure {
   members: Member[];
 }
 
+export type LinkType = "invite" | "magiclink" | "recovery";
+export interface InviteResult {
+  emailed: boolean;
+  email: string;
+  /** Present when the email couldn't be sent: share it with the member yourself. */
+  link?: string;
+}
+
 export interface PortalApi {
   /** The signed-in auth user id, or null. */
   currentUserId(): Promise<string | null>;
@@ -190,6 +198,12 @@ export interface PortalApi {
   notifications(): Promise<PortalNotification[]>;
   markNotificationsRead(ids?: string[]): Promise<void>;
   memberEmails(): Promise<Record<string, string>>;
-  createAccount(memberId: string, email: string): Promise<{ password: string }>;
-  resetPassword(memberId: string): Promise<{ password: string }>;
+  /** Creates the member's login and emails an invitation (or returns the link when email isn't set up). */
+  inviteMember(memberId: string, email?: string): Promise<InviteResult>;
+  /** Emails a link to choose a new password. */
+  resetPassword(memberId: string): Promise<InviteResult>;
+  /** Signs in from an emailed link (?token_hash=…&type=…). */
+  verifyLink(tokenHash: string, type: LinkType): Promise<void>;
+  /** Emails everyone a newly created task concerns. Best effort. */
+  notifyTask(taskId: string): Promise<{ sent: number }>;
 }

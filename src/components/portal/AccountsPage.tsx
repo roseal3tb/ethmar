@@ -1,14 +1,5 @@
 import { motion } from "framer-motion";
-import {
-  Check,
-  Copy,
-  KeyRound,
-  Loader2,
-  Search,
-  ShieldAlert,
-  UserCog,
-  UserPlus,
-} from "lucide-react";
+import { Check, Copy, KeyRound, Loader2, MailCheck, Search, Send, UserCog } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import {
@@ -18,13 +9,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { api } from "@/lib/portal/api";
 import { errorMessage } from "@/lib/portal/errors";
 import { useAccountActions, useDirectory, useMemberEmails } from "@/lib/portal/queries";
-import type { Member } from "@/lib/portal/types";
+import type { InviteResult, Member } from "@/lib/portal/types";
+import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, Chip, ErrorState, PageHeader, PageSkeleton, Segmented, titleOf } from "./ui";
 
 type Filter = "all" | "with" | "without";
-type Action = { kind: "create" | "reset"; member: Member } | null;
+type Action = { kind: "invite" | "reset"; member: Member } | null;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function AccountsPage() {
   const { dir, isError, refetch } = useDirectory();
@@ -33,6 +27,7 @@ export function AccountsPage() {
   const [committee, setCommittee] = useState("all");
   const [q, setQ] = useState("");
   const [action, setAction] = useState<Action>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const rows = useMemo(() => {
     let r = dir?.members ?? [];
@@ -51,20 +46,36 @@ export function AccountsPage() {
   if (isError) return <ErrorState onRetry={() => refetch()} />;
   if (!dir) return <PageSkeleton />;
   const withCount = dir.members.filter((m) => m.has_account).length;
+  const ready = dir.members.filter((m) => !m.has_account && emails.data?.[m.id]);
+  const noEmail = dir.members.filter((m) => !m.has_account && !emails.data?.[m.id]).length;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         icon={UserCog}
         title="حسابات الأعضاء"
-        subtitle={`${withCount} من ${dir.members.length} عندهم حساب`}
+        subtitle={`${withCount} من ${dir.members.length} فعّلوا دعوتهم أو وصلتهم`}
+        actions={
+          ready.length > 0 ? (
+            <button type="button" className="p-btn" onClick={() => setBulkOpen(true)}>
+              <Send className="size-4" /> دعوة الكل ({ready.length})
+            </button>
+          ) : undefined
+        }
       />
 
-      <div className="flex items-start gap-3 rounded-2xl border border-[rgb(232_194_122/0.25)] bg-[rgb(232_194_122/0.06)] p-4 text-sm leading-7 text-[var(--p-soft)]">
-        <ShieldAlert className="mt-1 size-4 shrink-0 text-[var(--p-warn)]" />
+      <div className="flex items-start gap-3 rounded-2xl border border-[var(--p-line-strong)] bg-[rgb(200_222_211/0.04)] p-4 text-sm leading-7 text-[var(--p-soft)]">
+        <MailCheck className="mt-1 size-4 shrink-0 text-[var(--p-ok)]" />
         <p>
-          كلمة المرور المؤقتة تظهر <b className="text-[var(--p-text)]">مرة وحدة</b> بعد الإنشاء أو
-          الإعادة. أرسلها للعضو بشكل خاص، وبيطلب منه النظام يغيّرها أول ما يدخل.
+          كل عضو يوصله إيميل دعوة فيه رابط، يفتحه ويختار كلمة المرور بنفسه. لو الرابط انتهى أو ضاع،
+          أرسلي له دعوة جديدة.
+          {noEmail > 0 && (
+            <>
+              {" "}
+              فيه <b className="text-[var(--p-text)]">{noEmail}</b> بدون إيميل مسجّل، تقدرين تكتبينه
+              لهم وقت الدعوة.
+            </>
+          )}
         </p>
       </div>
 
@@ -77,8 +88,8 @@ export function AccountsPage() {
             onChange={setFilter}
             options={[
               { value: "all", label: "الكل" },
-              { value: "with", label: "عندهم حساب" },
-              { value: "without", label: "بدون حساب", count: dir.members.length - withCount },
+              { value: "with", label: "مدعوّين" },
+              { value: "without", label: "لم يُدعَوا", count: dir.members.length - withCount },
             ]}
           />
           <select
@@ -119,24 +130,34 @@ export function AccountsPage() {
                 </span>
               </span>
               <span className="hidden min-w-0 text-xs text-[var(--p-soft)] md:block" dir="ltr">
-                {emails.data?.[m.id] ?? ""}
+                {emails.data?.[m.id] ?? <span className="text-[var(--p-bad)]">— بدون إيميل</span>}
               </span>
-              {m.has_account ? <Chip tone="ok">مفعّل</Chip> : <Chip tone="dim">بدون حساب</Chip>}
+              {m.has_account ? <Chip tone="ok">مدعو</Chip> : <Chip tone="dim">لم يُدعَ</Chip>}
               {m.has_account ? (
-                <button
-                  type="button"
-                  className="p-btn-ghost min-h-9 px-3 text-[13px]"
-                  onClick={() => setAction({ kind: "reset", member: m })}
-                >
-                  <KeyRound className="size-3.5" /> كلمة مرور جديدة
-                </button>
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    className="p-btn-ghost min-h-9 px-3 text-[13px]"
+                    onClick={() => setAction({ kind: "invite", member: m })}
+                    title="إعادة إرسال الدعوة"
+                  >
+                    <Send className="size-3.5" /> دعوة
+                  </button>
+                  <button
+                    type="button"
+                    className="p-btn-ghost min-h-9 px-3 text-[13px]"
+                    onClick={() => setAction({ kind: "reset", member: m })}
+                  >
+                    <KeyRound className="size-3.5" /> كلمة مرور
+                  </button>
+                </div>
               ) : (
                 <button
                   type="button"
                   className="p-btn min-h-9 px-3 text-[13px]"
-                  onClick={() => setAction({ kind: "create", member: m })}
+                  onClick={() => setAction({ kind: "invite", member: m })}
                 >
-                  <UserPlus className="size-3.5" /> إنشاء حساب
+                  <Send className="size-3.5" /> إرسال دعوة
                 </button>
               )}
             </li>
@@ -156,7 +177,76 @@ export function AccountsPage() {
           )}
         </DialogContent>
       </Dialog>
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent className="rounded-3xl border-[var(--p-line-strong)] bg-[#08291f] sm:max-w-md">
+          {bulkOpen && <BulkInvite members={ready} onClose={() => setBulkOpen(false)} />}
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+function LinkResult({
+  res,
+  name,
+  onClose,
+}: {
+  res: InviteResult;
+  name: string;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  if (res.emailed)
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-4 text-center"
+      >
+        <span className="mx-auto grid size-14 place-items-center rounded-full bg-[rgb(143_217_179/0.12)] text-[var(--p-ok)]">
+          <MailCheck className="size-6" />
+        </span>
+        <DialogTitle className="font-display text-xl">وصل الإيميل</DialogTitle>
+        <DialogDescription className="text-[var(--p-soft)]">
+          أرسلنا لـ {name} على <span dir="ltr">{res.email}</span>
+        </DialogDescription>
+        <button type="button" className="p-btn w-full" onClick={onClose}>
+          تم
+        </button>
+      </motion.div>
+    );
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      <DialogHeader className="text-start sm:text-start">
+        <DialogTitle className="font-display text-xl">الرابط جاهز</DialogTitle>
+        <DialogDescription className="text-[var(--p-soft)]">
+          إرسال الإيميلات ما تفعّل بعد، فانسخي الرابط وأرسليه لـ {name} بنفسك. يشتغل مرة وحدة.
+        </DialogDescription>
+      </DialogHeader>
+      <p className="p-well break-all p-3 text-xs text-[var(--p-soft)]" dir="ltr">
+        {res.link}
+      </p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className="p-btn flex-1"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(res.link ?? "");
+              setCopied(true);
+            } catch {
+              toast.error("ما قدرنا ننسخ، انسخيه يدويًا");
+            }
+          }}
+        >
+          {copied ? <Check className="size-4" /> : <Copy className="size-4" />}{" "}
+          {copied ? "نُسخ" : "نسخ الرابط"}
+        </button>
+        <button type="button" className="p-btn-ghost h-11" onClick={onClose}>
+          تم
+        </button>
+      </div>
+    </motion.div>
   );
 }
 
@@ -169,87 +259,43 @@ function AccountDialog({
   initialEmail: string;
   onClose: () => void;
 }) {
-  const { create, reset } = useAccountActions();
+  const { invite, reset } = useAccountActions();
   const [email, setEmail] = useState(initialEmail);
-  const [password, setPassword] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const busy = create.isPending || reset.isPending;
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const [res, setRes] = useState<InviteResult | null>(null);
+  const busy = invite.isPending || reset.isPending;
+  const emailOk = EMAIL.test(email.trim());
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     try {
-      const res =
-        action.kind === "create"
-          ? await create.mutateAsync({
+      setRes(
+        action.kind === "invite"
+          ? await invite.mutateAsync({
               memberId: action.member.id,
               email: email.trim().toLowerCase(),
             })
-          : await reset.mutateAsync(action.member.id);
-      setPassword(res.password);
+          : await reset.mutateAsync(action.member.id),
+      );
     } catch (err) {
       toast.error(errorMessage(err));
     }
   }
 
-  async function copy() {
-    if (!password) return;
-    const text = `بوابة أعضاء إثمار\nالبريد: ${email}\nكلمة المرور المؤقتة: ${password}`;
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("ما قدرنا ننسخ، انسخها يدويًا");
-    }
-  }
-
-  if (password)
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-4"
-      >
-        <DialogHeader className="text-start sm:text-start">
-          <DialogTitle className="font-display text-xl">
-            {action.kind === "create" ? "انشأ الحساب" : "كلمة مرور جديدة"}
-          </DialogTitle>
-          <DialogDescription className="text-[var(--p-soft)]">
-            أرسلها لـ {action.member.full_name} الحين، ما راح تظهر مرة ثانية.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="p-well space-y-2 p-4" dir="ltr">
-          {email && <p className="text-sm text-[var(--p-soft)]">{email}</p>}
-          <p className="select-all font-mono text-2xl font-bold tracking-wider text-[var(--p-gold-soft)]">
-            {password}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button type="button" className="p-btn flex-1" onClick={copy}>
-            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}{" "}
-            {copied ? "نُسخت" : "نسخ البيانات"}
-          </button>
-          <button type="button" className="p-btn-ghost h-11" onClick={onClose}>
-            تم
-          </button>
-        </div>
-      </motion.div>
-    );
+  if (res) return <LinkResult res={res} name={action.member.full_name} onClose={onClose} />;
 
   return (
     <form onSubmit={submit} className="space-y-4">
       <DialogHeader className="text-start sm:text-start">
         <DialogTitle className="font-display text-xl">
-          {action.kind === "create" ? "إنشاء حساب" : "إعادة تعيين كلمة المرور"}
+          {action.kind === "invite" ? "دعوة للبوابة" : "رابط كلمة مرور جديدة"}
         </DialogTitle>
         <DialogDescription className="text-[var(--p-soft)]">
-          {action.kind === "create"
-            ? `حساب جديد لـ ${action.member.full_name} بكلمة مرور مؤقتة.`
-            : `بتنلغي كلمة المرور الحالية لـ ${action.member.full_name}.`}
+          {action.kind === "invite"
+            ? `يوصل ${action.member.full_name} إيميل فيه رابط يفعّل فيه حسابه ويختار كلمة المرور.`
+            : `يوصل ${action.member.full_name} إيميل فيه رابط يختار فيه كلمة مرور جديدة.`}
         </DialogDescription>
       </DialogHeader>
-      {action.kind === "create" && (
+      {action.kind === "invite" && (
         <label className="block space-y-2">
           <span className="text-sm font-bold text-[var(--p-soft)]">البريد الإلكتروني</span>
           <input
@@ -267,15 +313,99 @@ function AccountDialog({
         <button
           type="submit"
           className="p-btn flex-1"
-          disabled={busy || (action.kind === "create" && !emailOk)}
+          disabled={busy || (action.kind === "invite" && !emailOk)}
         >
-          {busy && <Loader2 className="size-4 animate-spin" />}
-          {action.kind === "create" ? "إنشاء الحساب" : "إنشاء كلمة مرور جديدة"}
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+          إرسال
         </button>
         <button type="button" className="p-btn-ghost h-11" onClick={onClose}>
           إلغاء
         </button>
       </div>
     </form>
+  );
+}
+
+/** Invites everyone without an account whose email is on file, one after another. */
+function BulkInvite({ members, onClose }: { members: Member[]; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [state, setState] = useState<"idle" | "running" | "done">("idle");
+  const [done, setDone] = useState(0);
+  const [failed, setFailed] = useState<string[]>([]);
+  const [links, setLinks] = useState<{ name: string; link: string }[]>([]);
+
+  async function run() {
+    setState("running");
+    for (const m of members) {
+      try {
+        const r = await api.inviteMember(m.id);
+        if (!r.emailed && r.link) {
+          // Email isn't set up yet: stop rather than create accounts nobody hears about.
+          setLinks((l) => [...l, { name: m.full_name, link: r.link! }]);
+          setDone((d) => d + 1);
+          break;
+        }
+      } catch {
+        setFailed((f) => [...f, m.full_name]);
+      }
+      setDone((d) => d + 1);
+    }
+    qc.invalidateQueries({ queryKey: ["portal", "structure"] });
+    setState("done");
+  }
+
+  return (
+    <div className="space-y-4">
+      <DialogHeader className="text-start sm:text-start">
+        <DialogTitle className="font-display text-xl">دعوة الكل</DialogTitle>
+        <DialogDescription className="text-[var(--p-soft)]">
+          بيوصل إيميل دعوة لـ {members.length} عضو عندهم إيميل مسجّل وما انشأ لهم حساب.
+        </DialogDescription>
+      </DialogHeader>
+      {state !== "idle" && (
+        <div className="space-y-2">
+          <div className="h-2 overflow-hidden rounded-full bg-[rgb(200_222_211/0.1)]">
+            <div
+              className="h-full rounded-full bg-[var(--p-ok)] transition-[width] duration-300"
+              style={{ width: `${(done / members.length) * 100}%` }}
+            />
+          </div>
+          <p className="text-sm text-[var(--p-soft)]">
+            {done} من {members.length}
+            {failed.length > 0 && (
+              <span className="text-[var(--p-bad)]"> · تعذّر {failed.length}</span>
+            )}
+          </p>
+        </div>
+      )}
+      {state === "done" && links.length > 0 && (
+        <p className="rounded-xl bg-[rgb(232_194_122/0.1)] p-3 text-sm text-[var(--p-warn)]">
+          وقّفنا بعد أول عضو لأن إرسال الإيميلات ما تفعّل بعد. فعّليه وارجعي اضغطي «دعوة الكل».
+        </p>
+      )}
+      {state === "done" && failed.length > 0 && (
+        <p className="text-xs leading-6 text-[var(--p-dim)]">تعذّر: {failed.join("، ")}</p>
+      )}
+      <div className="flex gap-2">
+        {state === "idle" && (
+          <button type="button" className="p-btn flex-1" onClick={run}>
+            <Send className="size-4" /> أرسل الدعوات
+          </button>
+        )}
+        {state === "running" && (
+          <button type="button" className="p-btn flex-1" disabled>
+            <Loader2 className="size-4 animate-spin" /> جاري الإرسال…
+          </button>
+        )}
+        <button
+          type="button"
+          className="p-btn-ghost h-11"
+          onClick={onClose}
+          disabled={state === "running"}
+        >
+          {state === "done" ? "تم" : "إلغاء"}
+        </button>
+      </div>
+    </div>
   );
 }

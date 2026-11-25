@@ -3,6 +3,7 @@ import type {
   Assignment,
   Board,
   Committee,
+  InviteResult,
   Team,
   HourEntry,
   LeaderRow,
@@ -210,19 +211,30 @@ export const supabaseApi: PortalApi = {
     }[];
     return Object.fromEntries(rows.map((r) => [r.member_id, r.email]));
   },
-  async createAccount(memberId, email) {
+  async inviteMember(memberId, email) {
     const { data, error } = await sb().functions.invoke("member-accounts", {
-      body: { action: "create", member_id: memberId, email },
+      body: { action: "invite", member_id: memberId, ...(email ? { email } : {}) },
     });
     if (error) throw new PortalError(await edgeError(error));
-    return data as { password: string };
+    return data as InviteResult;
   },
   async resetPassword(memberId) {
     const { data, error } = await sb().functions.invoke("member-accounts", {
       body: { action: "reset", member_id: memberId },
     });
     if (error) throw new PortalError(await edgeError(error));
-    return data as { password: string };
+    return data as InviteResult;
+  },
+  async verifyLink(tokenHash, type) {
+    const { error } = await sb().auth.verifyOtp({ token_hash: tokenHash, type });
+    if (error) throw new PortalError("link_expired");
+  },
+  async notifyTask(taskId) {
+    const { data, error } = await sb().functions.invoke("task-emails", {
+      body: { task_id: taskId },
+    });
+    if (error) return { sent: 0 };
+    return { sent: Number((data as { sent?: number })?.sent ?? 0) };
   },
 };
 
