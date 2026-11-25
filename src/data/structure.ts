@@ -455,14 +455,6 @@ export const structurePeople: StructPerson[] = [
     extra_titles: ["قائد مشروع · لجنة إدارة المشاريع (المشروع موقّف حاليًا)"],
   },
   {
-    name: "مريم عبد الباقي",
-    committee_id: "pr",
-    team_id: "pr-outreach",
-    role: "member",
-    title: null,
-    extra_titles: [],
-  },
-  {
     name: "بيان العتي",
     committee_id: "pr",
     team_id: "pr-outreach",
@@ -815,14 +807,6 @@ export const structurePeople: StructPerson[] = [
     extra_titles: [],
   },
   {
-    name: "لمى الاحمري",
-    committee_id: "media",
-    team_id: "media-photo",
-    role: "member",
-    title: null,
-    extra_titles: [],
-  },
-  {
     name: "سعد المطيري",
     committee_id: "media",
     team_id: "media-photo",
@@ -1104,14 +1088,6 @@ export const structurePeople: StructPerson[] = [
   },
   {
     name: "أنس المقيطيب",
-    committee_id: "fin",
-    team_id: "fin-content",
-    role: "member",
-    title: null,
-    extra_titles: [],
-  },
-  {
-    name: "درة الهدلق",
     committee_id: "fin",
     team_id: "fin-content",
     role: "member",
