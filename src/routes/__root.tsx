@@ -34,31 +34,65 @@ function NotFoundComponent() {
   );
 }
 
+// After a new deploy, a tab that was already open may ask for script files that no longer exist
+// (or were requested mid-switch). One automatic reload picks up the new version; the guard stops loops.
+const RELOAD_KEY = "ethmar-chunk-reload";
+function isChunkError(error: unknown) {
+  const msg = String((error as Error | null)?.message ?? error);
+  return /dynamically imported module|Importing a module script failed|Loading chunk|preload/i.test(
+    msg,
+  );
+}
+function reloadOnce(): boolean {
+  try {
+    const last = Number(sessionStorage.getItem(RELOAD_KEY) ?? 0);
+    if (Date.now() - last < 30_000) return false;
+    sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+  } catch {
+    // storage unavailable: still try once
+  }
+  window.location.reload();
+  return true;
+}
+if (typeof window !== "undefined") {
+  window.addEventListener("vite:preloadError", (e) => {
+    if (reloadOnce()) e.preventDefault();
+  });
+}
+
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
+  const chunk = isChunkError(error);
   useEffect(() => {
+    if (chunk && reloadOnce()) return;
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
+  }, [error, chunk]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          ما قدرنا نفتح الصفحة
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          {chunk
+            ? "الموقع تحدّث للتو. حدّث الصفحة وبتفتح لك النسخة الجديدة."
+            : "صار خطأ من عندنا. جرّب مرة ثانية أو ارجع للرئيسية."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
+              if (chunk) {
+                window.location.reload();
+                return;
+              }
               router.invalidate();
               reset();
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Try again
+            {chunk ? "تحديث الصفحة" : "حاول مرة ثانية"}
           </button>
           <a
             href="/"
