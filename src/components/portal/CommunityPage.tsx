@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ChevronDown, Crown, Search, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { COMMITTEE_HEADS, LEADERSHIP, TEAM_HEADS } from "@/lib/portal/permissions";
 import { useDirectory, useMemberTiers, type Directory } from "@/lib/portal/queries";
 import { useMe } from "@/lib/portal/session";
@@ -229,11 +229,26 @@ function Tree({
                         aria-hidden="true"
                         className="absolute -top-5 left-1/2 h-5 w-px bg-[var(--p-line-strong)]"
                       />
+                      {isExp && (
+                        <motion.span
+                          aria-hidden="true"
+                          initial={{ scaleY: 0 }}
+                          animate={{ scaleY: 1 }}
+                          transition={{ duration: 0.25, ease: EASE }}
+                          className="absolute -bottom-2 left-1/2 hidden h-2 w-px origin-top lg:block"
+                          style={{ background: c.accent }}
+                        />
+                      )}
                       <div
                         className={cn(
                           "p-card flex h-full flex-col overflow-hidden transition-colors",
                           isExp && "border-[var(--p-line-strong)]",
                         )}
+                        style={
+                          isExp
+                            ? { borderColor: `color-mix(in oklab, ${c.accent} 55%, transparent)` }
+                            : undefined
+                        }
                       >
                         <span className="h-1" style={{ background: c.accent }} />
                         <button
@@ -276,52 +291,14 @@ function Tree({
 
             <AnimatePresence initial={false}>
               {exp && (
-                <motion.section
+                <TeamBranch
                   key={exp.id}
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.4, ease: EASE }}
-                  className="overflow-hidden"
-                  aria-label={`فرق ${exp.title}`}
-                >
-                  <div
-                    className="p-card p-4"
-                    style={{ borderColor: `color-mix(in oklab, ${exp.accent} 30%, transparent)` }}
-                  >
-                    <p className="mb-3 text-sm font-bold" style={{ color: exp.accent }}>
-                      فرق {exp.title}
-                    </p>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {dir.teamsOf(exp.id).map((t, i) => {
-                        const heads = dir.members.filter(
-                          (m) => m.team_id === t.id && TEAM_HEADS.includes(m.role),
-                        );
-                        const count = dir.members.filter((m) => m.team_id === t.id).length;
-                        return (
-                          <motion.button
-                            key={t.id}
-                            type="button"
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 + i * 0.06, duration: 0.4, ease: EASE }}
-                            onClick={() => onOpen(exp.id)}
-                            className="p-well flex items-center gap-3 p-3.5 text-start transition-colors hover:bg-[rgb(200_222_211/0.06)]"
-                          >
-                            <span className="min-w-0 flex-1">
-                              <b className="block truncate">{t.name}</b>
-                              <span className="block truncate text-xs text-[var(--p-soft)]">
-                                <Crown className="me-1 inline size-3 text-[var(--p-gold)]" />
-                                {heads.map((h) => h.full_name).join(" · ") || "—"}
-                              </span>
-                            </span>
-                            <span className="text-xs text-[var(--p-dim)]">{count} عضو</span>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </motion.section>
+                  dir={dir}
+                  committee={exp}
+                  index={dir.committees.findIndex((c) => c.id === exp.id)}
+                  total={dir.committees.length}
+                  onOpen={() => onOpen(exp.id)}
+                />
               )}
             </AnimatePresence>
           </motion.div>
@@ -548,5 +525,139 @@ function MemberChip({
       ))}
       {tier && <TierGem tierId={tier.tier_id} className="size-3.5" />}
     </motion.span>
+  );
+}
+
+const TEAM_W = 208;
+const TEAM_GAP = 12;
+
+/** The expanded committee's teams, hanging from it like the rest of the tree. */
+function TeamBranch({
+  dir,
+  committee,
+  index,
+  total,
+  onOpen,
+}: {
+  dir: Directory;
+  committee: Committee;
+  index: number;
+  total: number;
+  onOpen: () => void;
+}) {
+  const teams = dir.teamsOf(committee.id);
+  const wrap = useRef<HTMLDivElement>(null);
+  const [geo, setGeo] = useState<{
+    stem: number;
+    offset: number;
+    from: number;
+    to: number;
+    row: boolean;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const measure = () => {
+      const cw = el.clientWidth;
+      const lg = window.matchMedia("(min-width: 1024px)").matches;
+      const iw = teams.length * TEAM_W + (teams.length - 1) * TEAM_GAP;
+      const row = iw <= cw;
+      // Distances are measured from the right edge (RTL), like the committee columns above.
+      const colW = (cw - (total - 1) * TEAM_GAP) / total; // the committee grid uses gap-3 (12px)
+      const stem = lg ? index * (colW + TEAM_GAP) + colW / 2 : cw / 2;
+      const offset = row ? Math.max(0, Math.min(cw - iw, stem - iw / 2)) : 0;
+      const first = offset + TEAM_W / 2;
+      const last = offset + iw - TEAM_W / 2;
+      setGeo({ stem, offset, from: Math.min(stem, first), to: Math.max(stem, last), row });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [index, total, teams.length]);
+
+  const line = `color-mix(in oklab, ${committee.accent} 55%, transparent)`;
+  return (
+    <motion.section
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.4, ease: EASE }}
+      // The page stacks sections with gap-6; pull up so the branch meets the card's stem.
+      className="-mt-6 overflow-hidden"
+      aria-label={`فرق ${committee.title}`}
+    >
+      <div ref={wrap} className="relative pb-2 pt-6" style={{ opacity: geo ? 1 : 0 }}>
+        {geo && (
+          <>
+            <motion.span
+              aria-hidden="true"
+              className="absolute top-0 h-6 w-px origin-top"
+              style={{ right: geo.stem, background: line }}
+              initial={{ scaleY: 0 }}
+              animate={{ scaleY: 1 }}
+              transition={{ duration: 0.25, ease: EASE, delay: 0.1 }}
+            />
+            {geo.row && teams.length > 0 && (
+              <motion.span
+                aria-hidden="true"
+                className="absolute top-6 h-px"
+                style={{ right: geo.from, width: Math.max(1, geo.to - geo.from), background: line }}
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.35, ease: EASE, delay: 0.25 }}
+              />
+            )}
+          </>
+        )}
+        <div
+          className={cn("flex gap-3 pt-5", geo?.row ? "w-max" : "flex-wrap justify-center")}
+          style={geo?.row ? { marginInlineStart: geo.offset } : undefined}
+        >
+          {teams.map((t, i) => {
+            const heads = dir.members.filter(
+              (m) => m.team_id === t.id && TEAM_HEADS.includes(m.role),
+            );
+            const count = dir.members.filter((m) => m.team_id === t.id).length;
+            return (
+              <motion.div
+                key={t.id}
+                className="relative"
+                style={{ width: TEAM_W }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 + i * 0.07, duration: 0.4, ease: EASE }}
+              >
+                {geo?.row && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -top-5 left-1/2 h-5 w-px"
+                    style={{ background: line }}
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={onOpen}
+                  className="p-card flex w-full flex-col items-start gap-1.5 overflow-hidden p-0 text-start transition-colors hover:border-[var(--p-line-strong)]"
+                >
+                  <span className="h-0.5 w-full" style={{ background: line }} />
+                  <span className="flex w-full flex-col gap-1.5 px-4 pb-3.5 pt-2.5">
+                    <b className="font-display text-[15px] leading-snug">{t.name}</b>
+                    <span className="text-xs text-[var(--p-dim)]">{count} عضو</span>
+                    {heads.length > 0 && (
+                      <span className="flex items-start gap-1 text-xs text-[var(--p-soft)]">
+                        <Crown className="mt-0.5 size-3 shrink-0 text-[var(--p-gold)]" />
+                        <span>{heads.map((h) => h.full_name).join(" · ")}</span>
+                      </span>
+                    )}
+                  </span>
+                </button>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </motion.section>
   );
 }
