@@ -18,6 +18,8 @@ import { Avatar, Chip, ErrorState, PageHeader, PageSkeleton, Segmented, titleOf 
 
 type Filter = "all" | "with" | "without";
 type Action = { kind: "invite" | "reset"; member: Member } | null;
+/** Activated = has a login and has chosen their own password. */
+const isActive = (m: Member) => m.has_account && !m.must_change_password;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function AccountsPage() {
@@ -31,7 +33,7 @@ export function AccountsPage() {
 
   const rows = useMemo(() => {
     let r = dir?.members ?? [];
-    if (filter !== "all") r = r.filter((m) => (filter === "with" ? m.has_account : !m.has_account));
+    if (filter !== "all") r = r.filter((m) => (filter === "with" ? isActive(m) : !isActive(m)));
     if (committee !== "all")
       r = r.filter((m) => (committee === "lead" ? !m.committee_id : m.committee_id === committee));
     if (q.trim())
@@ -45,16 +47,16 @@ export function AccountsPage() {
 
   if (isError) return <ErrorState onRetry={() => refetch()} />;
   if (!dir) return <PageSkeleton />;
-  const withCount = dir.members.filter((m) => m.has_account).length;
-  const ready = dir.members.filter((m) => !m.has_account && emails.data?.[m.id]);
-  const noEmail = dir.members.filter((m) => !m.has_account && !emails.data?.[m.id]).length;
+  const withCount = dir.members.filter(isActive).length;
+  const ready = dir.members.filter((m) => !isActive(m) && emails.data?.[m.id]);
+  const noEmail = dir.members.filter((m) => !isActive(m) && !emails.data?.[m.id]).length;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         icon={UserCog}
         title="حسابات الأعضاء"
-        subtitle={`${withCount} من ${dir.members.length} فعّلوا دعوتهم أو وصلتهم`}
+        subtitle={`${withCount} من ${dir.members.length} فعّلوا حساباتهم`}
         actions={
           ready.length > 0 ? (
             <button type="button" className="p-btn" onClick={() => setBulkOpen(true)}>
@@ -88,8 +90,8 @@ export function AccountsPage() {
             onChange={setFilter}
             options={[
               { value: "all", label: "الكل" },
-              { value: "with", label: "مدعوّين" },
-              { value: "without", label: "لم يُدعَوا", count: dir.members.length - withCount },
+              { value: "with", label: "مفعّلين" },
+              { value: "without", label: "لم يفعّلوا", count: dir.members.length - withCount },
             ]}
           />
           <select
@@ -132,8 +134,14 @@ export function AccountsPage() {
               <span className="hidden min-w-0 text-xs text-[var(--p-soft)] md:block" dir="ltr">
                 {emails.data?.[m.id] ?? <span className="text-[var(--p-bad)]">— بدون إيميل</span>}
               </span>
-              {m.has_account ? <Chip tone="ok">مدعو</Chip> : <Chip tone="dim">لم يُدعَ</Chip>}
-              {m.has_account ? (
+              {isActive(m) ? (
+                <Chip tone="ok">مفعّل</Chip>
+              ) : m.has_account ? (
+                <Chip tone="warn">بانتظار التفعيل</Chip>
+              ) : (
+                <Chip tone="dim">لم يُدعَ</Chip>
+              )}
+              {isActive(m) ? (
                 <div className="flex gap-1.5">
                   <button
                     type="button"
@@ -359,7 +367,7 @@ function BulkInvite({ members, onClose }: { members: Member[]; onClose: () => vo
       <DialogHeader className="text-start sm:text-start">
         <DialogTitle className="font-display text-xl">دعوة الكل</DialogTitle>
         <DialogDescription className="text-[var(--p-soft)]">
-          بيوصل إيميل دعوة لـ {members.length} عضو عندهم إيميل مسجّل وما انشأ لهم حساب.
+          بيوصل إيميل دعوة لـ {members.length} عضو عندهم إيميل مسجّل وما فعّلوا حساباتهم بعد.
         </DialogDescription>
       </DialogHeader>
       {state !== "idle" && (
