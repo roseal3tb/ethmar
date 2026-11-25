@@ -73,6 +73,7 @@ export function TaskDetail({ task, compact }: { task: Task; compact?: boolean | 
   const creator = dir?.member(task.created_by);
   const [confirm, setConfirm] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const claim = useClaim();
   const unclaim = useUnclaim();
   const setStatus = useSetTaskStatus();
@@ -164,15 +165,7 @@ export function TaskDetail({ task, compact }: { task: Task; compact?: boolean | 
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-[var(--p-bad)]"
-                  onClick={() =>
-                    setStatus.mutate(
-                      { taskId: task.id, status: "cancelled" },
-                      {
-                        onSuccess: () => toast("أُلغيت المهمة"),
-                        onError: (e) => toast.error(errorMessage(e)),
-                      },
-                    )
-                  }
+                  onClick={() => setCancelOpen(true)}
                 >
                   <Ban className="size-4" /> إلغاء المهمة
                 </DropdownMenuItem>
@@ -284,6 +277,40 @@ export function TaskDetail({ task, compact }: { task: Task; compact?: boolean | 
             </AlertDialogAction>
             <AlertDialogCancel className="p-btn-ghost mt-0 h-11 bg-transparent">
               لا، تراجع
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <AlertDialogContent className={DIALOG}>
+          <AlertDialogHeader className="text-start sm:text-start">
+            <AlertDialogTitle className="font-display text-xl">تلغي المهمة؟</AlertDialogTitle>
+            <AlertDialogDescription className="leading-7 text-[var(--p-soft)]">
+              «{task.title}» بتنتقل للمهام المغلقة
+              {task.assignments.some((a) => a.status !== "approved")
+                ? "، واللي شغالين عليها ما يقدرون يسلّمونها"
+                : ""}
+              . الساعات المعتمدة تبقى لأصحابها. إذا تبي توقف السحب بس، اختر «إغلاق المهمة».
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:justify-start">
+            <AlertDialogAction
+              className="p-btn bg-[var(--p-bad)] text-[#2a0d06] hover:bg-[var(--p-bad)]"
+              onClick={() =>
+                setStatus.mutate(
+                  { taskId: task.id, status: "cancelled" },
+                  {
+                    onSuccess: () => toast("أُلغيت المهمة"),
+                    onError: (e) => toast.error(errorMessage(e)),
+                  },
+                )
+              }
+            >
+              ألغِ المهمة
+            </AlertDialogAction>
+            <AlertDialogCancel className="p-btn-ghost mt-0 h-11 bg-transparent">
+              لا، خلها
             </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>

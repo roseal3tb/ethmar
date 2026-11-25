@@ -476,6 +476,7 @@ export const mockApi: PortalApi = {
     const me = meOrThrow();
     const t = s().tasks.find((x) => x.id === taskId);
     const mine = t && myAssignment(me, t);
+    if (t?.status === "cancelled") throw new PortalError("task_closed");
     if (!t || !mine || !["claimed", "returned"].includes(mine.status))
       throw new PortalError("cannot_submit");
     if (link.trim() && !/^https?:\/\//i.test(link.trim())) throw new PortalError("invalid_link");

@@ -71,7 +71,12 @@ export function groupTasks(tasks: Task[], me: Member, today: string): Group[] {
   };
   for (const t of tasks) {
     const mine = myAssignment(me, t);
-    const finished = t.status !== "active" || mine?.status === "approved";
+    // A closed task stops new claims only: if I still hold it, it stays in my timeline.
+    const stillMine = !!mine && mine.status !== "approved";
+    const finished =
+      t.status === "cancelled" ||
+      (t.status === "closed" && !stillMine) ||
+      mine?.status === "approved";
     if (finished) g.done.push(t);
     else if (t.due_date < today) g.late.push(t);
     else if (t.due_date <= end) g.week.push(t);

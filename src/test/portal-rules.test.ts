@@ -169,4 +169,32 @@ describe("agenda grouping", () => {
     ]);
     expect(canClaim(me, t("z", "2026-11-20"), today)).toBe(false);
   });
+
+  it("a closed task I still hold stays in my timeline", () => {
+    const today = "2026-11-25";
+    const me = { id: "x" } as Member;
+    const held = {
+      id: "h",
+      title: "h",
+      due_date: "2026-11-27",
+      status: "closed",
+      assignments: [{ member_id: "x", status: "claimed" }],
+    } as unknown as Task;
+    expect(groupTasks([held], me, today).map((g) => g.id)).toEqual(["week"]);
+  });
+});
+
+describe("closing vs cancelling", () => {
+  it("closing stops new claims but the holder can still submit; cancelling stops both", async () => {
+    await as("member@ethmar.test");
+    await mockApi.claimTask("t2");
+    await as("lead@ethmar.test");
+    await mockApi.setTaskStatus("t2", "closed");
+    await as("member@ethmar.test");
+    await expect(mockApi.submitTask("t2", "", "")).resolves.toBeUndefined();
+    await as("lead@ethmar.test");
+    await mockApi.setTaskStatus("t1", "cancelled");
+    await as("member@ethmar.test");
+    await expect(mockApi.claimTask("t1")).rejects.toThrow();
+  });
 });
