@@ -140,7 +140,7 @@ export function HoursPage() {
             <EmptyState
               icon={Hourglass}
               title="ما فيه ساعات معتمدة بعد"
-              body="كل مهمة تنعتمد لك تنضاف هنا تلقائيًا."
+              body="كل مهمة تنعتمد لك تنضاف هنا تلقائيًا"
             />
           ) : (
             <div className="flex flex-col gap-5">

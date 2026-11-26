@@ -77,8 +77,8 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {chunk
-            ? "الموقع تحدّث للتو. حدّث الصفحة وبتفتح لك النسخة الجديدة."
-            : "صار خطأ من عندنا. جرّب مرة ثانية أو ارجع للرئيسية."}
+            ? "الموقع تحدّث للتو. حدّث الصفحة وبتفتح لك النسخة الجديدة"
+            : "صار خطأ من عندنا. جرّب مرة ثانية أو ارجع للرئيسية"}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button

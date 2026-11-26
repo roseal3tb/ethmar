@@ -44,7 +44,7 @@ function BrandSide() {
           بوابة أعضاء <span className="text-[var(--p-gold-soft)]">إثمار</span>
         </h1>
         <p className="text-lg leading-8 text-[var(--p-soft)]">
-          مهامك وساعاتك التطوعية وترتيبك بين أعضاء المبادرة، في مكان واحد.
+          مهامك وساعاتك التطوعية وترتيبك بين أعضاء المبادرة، في مكان واحد
         </p>
       </div>
       <ul className="grid max-w-md gap-3 text-sm text-[var(--p-soft)]">
@@ -159,7 +159,7 @@ export function LoginScreen() {
             className="rounded-xl bg-[rgb(232_194_122/0.1)] px-3 py-2 text-sm leading-6 text-[var(--p-warn)]"
           >
             الرابط انتهى أو انستخدم قبل. لو اخترت كلمة مرور ادخل فيها، وإلا اطلب رابط جديد من قيادة
-            المبادرة.
+            المبادرة
           </p>
         )}
         <Field label="البريد الإلكتروني" icon={Mail}>
@@ -209,7 +209,7 @@ export function LoginScreen() {
           دخول
         </button>
         <p className="text-center text-[13px] leading-6 text-[var(--p-dim)]">
-          ما وصلتك دعوة أو نسيت كلمة المرور؟ تواصل مع قيادة المبادرة ويوصلك رابط على إيميلك.
+          ما وصلتك دعوة أو نسيت كلمة المرور؟ تواصل مع قيادة المبادرة ويوصلك رابط على إيميلك
         </p>
       </form>
       {usingMock && (
@@ -300,7 +300,7 @@ export function ChangePasswordForm({
           onChange={(e) => setPw2(e.target.value)}
         />
       </Field>
-      <p className="text-xs text-[var(--p-dim)]">٨ أحرف على الأقل، ويفضّل تخلطها بأرقام ورموز.</p>
+      <p className="text-xs text-[var(--p-dim)]">٨ أحرف على الأقل، ويفضّل تخلطها بأرقام ورموز</p>
       {error && (
         <p
           role="alert"
@@ -324,7 +324,7 @@ export function FirstPasswordScreen({ onDone }: { onDone: () => void }) {
       <div className="p-card space-y-5 p-6 sm:p-8">
         <p className="text-sm text-[var(--p-soft)]">
           حياك الله <b className="text-[var(--p-text)]">{me?.full_name}</b> 👋 قبل ما تبدأ، غيّر
-          كلمة المرور المؤقتة اللي وصلتك.
+          كلمة المرور المؤقتة اللي وصلتك
         </p>
         <ChangePasswordForm onDone={onDone} />
         <button
@@ -350,7 +350,7 @@ export function UnlinkedScreen() {
         <h2 className="font-display text-xl font-extrabold">حسابك غير مربوط بعضوية</h2>
         <p className="text-sm leading-7 text-[var(--p-dim)]">
           سجّلت الدخول بنجاح لكن ما لقينا عضوًا مرتبطًا بهذا البريد. تواصل مع قيادة المبادرة يربطون
-          حسابك.
+          حسابك
         </p>
         <button type="button" onClick={signOut} className="p-btn-ghost">
           <LogOut className="size-4" /> تسجيل الخروج

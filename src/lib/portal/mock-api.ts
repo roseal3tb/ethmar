@@ -130,7 +130,7 @@ function seed(): State {
       due_date: addDays(today, 1),
       created_by: lead,
       description:
-        "التواصل مع الجهة المستضيفة وتأكيد الموعد وعدد الطلاب، ثم مشاركة جدول الزيارة مع اللجنة.",
+        "التواصل مع الجهة المستضيفة وتأكيد الموعد وعدد الطلاب، ثم مشاركة جدول الزيارة مع اللجنة",
       assignments: [
         a("t1", by("عبدالله الفليح"), "claimed"),
         a("t1", by("ياسر العمرو"), "submitted", {
@@ -149,7 +149,7 @@ function seed(): State {
       hours: 4,
       due_date: addDays(today, 6),
       created_by: lead,
-      description: "مهمة جماعية للفريقين: استقبال الجهات المشاركة وتجهيز أركانها يوم المعرض.",
+      description: "مهمة جماعية للفريقين: استقبال الجهات المشاركة وتجهيز أركانها يوم المعرض",
       assignments: [a("t2", by("يزيد الرويتع"), "claimed"), a("t2", by("رنا الفارس"), "claimed")],
     }),
     t({
@@ -163,7 +163,7 @@ function seed(): State {
       hours: 2,
       due_date: addDays(today, 3),
       created_by: lead,
-      description: "حصر المستلزمات وتسعيرها ورفع القائمة للقائد.",
+      description: "حصر المستلزمات وتسعيرها ورفع القائمة للقائد",
     }),
     t({
       id: "t4",
@@ -174,7 +174,7 @@ function seed(): State {
       hours: 2,
       due_date: addDays(today, 9),
       created_by: lead,
-      description: "صياغة خطاب شكر موحّد لشركاء النجاح.",
+      description: "صياغة خطاب شكر موحّد لشركاء النجاح",
       assignments: [a("t4", by("منى الروقي"), "claimed", { assigned_by: lead })],
     }),
     t({
@@ -187,7 +187,7 @@ function seed(): State {
       hours: 3,
       due_date: addDays(today, 4),
       created_by: by("عالية البليهي"),
-      description: "إضافة مشاريع الفصل وتحديث الصور.",
+      description: "إضافة مشاريع الفصل وتحديث الصور",
       assignments: [],
     }),
     t({
@@ -198,7 +198,7 @@ function seed(): State {
       hours: 5,
       due_date: addDays(today, 12),
       created_by: by("غادة العتيبي"),
-      description: "خطة مختصرة بأهداف اللجنة ومشاريعها وعدد أعضائها المتوقع.",
+      description: "خطة مختصرة بأهداف اللجنة ومشاريعها وعدد أعضائها المتوقع",
       assignments: [
         a("t6", lead, "claimed", { assigned_by: by("غادة العتيبي") }),
         a("t6", by("عالية البليهي"), "claimed", { assigned_by: by("غادة العتيبي") }),

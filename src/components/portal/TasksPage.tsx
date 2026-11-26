@@ -232,7 +232,7 @@ export function TasksPage({
                   animate={{ opacity: 1 }}
                   className="p-card"
                 >
-                  <EmptyState icon={ClipboardList} title="اختر مهمة" body="تفاصيلها بتظهر هنا." />
+                  <EmptyState icon={ClipboardList} title="اختر مهمة" body="تفاصيلها بتظهر هنا" />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -353,10 +353,10 @@ function TaskRow({
 
 function Empty({ view }: { view: TaskView }) {
   const copy: Record<TaskView, [string, string]> = {
-    open: ["ما فيه مهام متاحة الحين", "أول ما تنزل مهمة جديدة يوصلك إشعار."],
-    mine: ["ما عندك مهام", "شوف المهام المتاحة واسحب اللي يناسبك."],
+    open: ["ما فيه مهام متاحة الحين", "أول ما تنزل مهمة جديدة يوصلك إشعار"],
+    mine: ["ما عندك مهام", "شوف المهام المتاحة واسحب اللي يناسبك"],
     review: ["ما فيه شي بانتظار اعتمادك", "كل التسليمات تمت مراجعتها 👌"],
-    all: ["ما فيه مهام", "ما نزلت مهام بعد."],
+    all: ["ما فيه مهام", "ما نزلت مهام بعد"],
   };
   return (
     <EmptyState

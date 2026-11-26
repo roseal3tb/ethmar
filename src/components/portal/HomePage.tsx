@@ -276,8 +276,8 @@ export function HomePage() {
                   title="ما عندك مهام حاليًا"
                   body={
                     isLeadership(me)
-                      ? "المهام اللي تُسند لك تظهر هنا."
-                      : "تصفّح المهام المتاحة واسحب اللي يناسبك."
+                      ? "المهام اللي تُسند لك تظهر هنا"
+                      : "تصفّح المهام المتاحة واسحب اللي يناسبك"
                   }
                   action={
                     <Link
@@ -354,7 +354,7 @@ export function HomePage() {
                 if (items.length === 0)
                   return (
                     <p className="py-4 text-center text-sm text-[var(--p-dim)]">
-                      أول ما تُعتمد لك مهمة بتظهر هنا.
+                      أول ما تُعتمد لك مهمة بتظهر هنا
                     </p>
                   );
                 return (

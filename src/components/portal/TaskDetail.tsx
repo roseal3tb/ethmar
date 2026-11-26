@@ -291,7 +291,7 @@ export function TaskDetail({ task, compact }: { task: Task; compact?: boolean | 
               {task.assignments.some((a) => a.status !== "approved")
                 ? "، واللي شغالين عليها ما يقدرون يسلّمونها"
                 : ""}
-              . الساعات المعتمدة تبقى لأصحابها. إذا تبي توقف السحب بس، اختر «إغلاق المهمة».
+              . الساعات المعتمدة تبقى لأصحابها. إذا تبي توقف السحب بس، اختر «إغلاق المهمة»
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:justify-start">
@@ -601,7 +601,7 @@ function SubmitDialog({
           <DialogHeader className="text-start sm:text-start">
             <DialogTitle className="font-display text-xl">تسليم المهمة</DialogTitle>
             <DialogDescription className="text-[var(--p-soft)]">
-              الخانات اختيارية، اكتب اللي يساعد قائدك يراجع.
+              الخانات اختيارية، اكتب اللي يساعد قائدك يراجع
             </DialogDescription>
           </DialogHeader>
           <label className="block space-y-2">

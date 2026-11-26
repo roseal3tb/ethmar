@@ -22,7 +22,10 @@ const DISPLAY = "'Cairo','Tajawal','Segoe UI',Tahoma,Arial,sans-serif";
 const BODY = "'Tajawal','Cairo','Segoe UI',Tahoma,Arial,sans-serif";
 
 export const esc = (s: string) =>
-  s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  s.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+  );
 
 /** Arabic counting for hours: ساعة / ساعتين / ٣ ساعات / ١٢ ساعة. */
 export function hoursAr(h: number): string {
@@ -36,7 +39,12 @@ export function hoursAr(h: number): string {
 // ------------------------------------------------------------------ building blocks
 
 /** Green membership card (invite / reset). */
-export function memberCard(o: { name: string; place: string; code?: string | null; email: string }) {
+export function memberCard(o: {
+  name: string;
+  place: string;
+  code?: string | null;
+  email: string;
+}) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0 6px;background:${C.forest};background-image:linear-gradient(135deg,${C.night} 0%,${C.forest} 100%);border-radius:22px">
 <tr><td style="padding:22px 22px 20px" dir="rtl">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
@@ -77,7 +85,10 @@ export function stats(items: { value: string; label: string; gold?: boolean }[])
 <tr>
 ${items
   .map(
-    (s, i) => `<td width="${w}%" style="padding:18px 8px 16px;text-align:center;vertical-align:top;${i > 0 ? `border-right:1px solid ${C.line};` : ""}">
+    (
+      s,
+      i,
+    ) => `<td width="${w}%" style="padding:18px 8px 16px;text-align:center;vertical-align:top;${i > 0 ? `border-right:1px solid ${C.line};` : ""}">
 <div style="color:${s.gold ? C.gold : C.forest};font-family:${DISPLAY};font-size:28px;font-weight:800;line-height:1.2">${esc(s.value)}</div>
 <div style="color:${C.muted};font-family:${BODY};font-size:13px;line-height:1.6;margin-top:4px">${esc(s.label)}</div>
 </td>`,
@@ -177,7 +188,7 @@ ${o.note ? `<p style="margin:12px 0 0;color:${C.muted};font-family:${BODY};font-
 <td style="text-align:right;vertical-align:middle"><img src="${SITE}/email/ethmar-logo-light.png" width="96" alt="إثمار" style="display:block;border:0;width:96px;height:auto"></td>
 <td style="text-align:left;vertical-align:middle;color:${C.mint};font-family:Arial,sans-serif;font-size:12px;line-height:1.9" dir="ltr">ethmar.spp@gmail.com<br>@ETHMAR_SPP</td>
 </tr></table>
-<div style="color:${C.mint};opacity:.85;font-family:${BODY};font-size:12px;line-height:1.9;margin-top:14px">مبادرة طلابية للتوعية المالية تحت برنامج الشراكة الطلابية بجامعة الملك سعود. وصلك هذا الإيميل لأنك عضو في المبادرة.</div>
+<div style="color:${C.mint};opacity:.85;font-family:${BODY};font-size:12px;line-height:1.9;margin-top:14px">مبادرة طلابية للتوعية المالية تحت برنامج الشراكة الطلابية بجامعة الملك سعود. وصلك هذا الإيميل لأنك عضو في المبادرة</div>
 </td></tr>
 </table>
 <div dir="rtl" style="max-width:600px;margin:14px auto 0;color:#97A29C;font-family:${BODY};font-size:12px;line-height:1.7;text-align:center">إذا الزر ما اشتغل، انسخ الرابط وافتحه:<br><a href="${esc(o.url)}" dir="ltr" style="color:#6F807A;word-break:break-all">${esc(o.url)}</a></div>

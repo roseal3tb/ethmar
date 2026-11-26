@@ -264,7 +264,7 @@ export function ErrorState({ onRetry }: { onRetry?: () => void }) {
   return (
     <div className="p-card flex flex-col items-center gap-3 p-8 text-center" role="alert">
       <p className="font-display font-bold">تعذّر تحميل البيانات</p>
-      <p className="text-sm text-[var(--p-dim)]">تأكد من اتصالك بالإنترنت وحاول مرة ثانية.</p>
+      <p className="text-sm text-[var(--p-dim)]">تأكد من اتصالك بالإنترنت وحاول مرة ثانية</p>
       {onRetry && (
         <button type="button" onClick={onRetry} className="p-btn-ghost">
           إعادة المحاولة

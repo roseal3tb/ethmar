@@ -145,8 +145,8 @@ export function LeaderboardPage() {
                 {myBoard
                   ? "ما ظهرت في هذي اللوحة، لوحتك هي «" +
                     (myBoard === "leaders" ? "القادة" : "الأعضاء") +
-                    "»."
-                  : "قيادة المبادرة خارج المنافسة، والأرقام التفصيلية في صفحة الإحصائيات."}
+                    "»"
+                  : "قيادة المبادرة خارج المنافسة، والأرقام التفصيلية في صفحة الإحصائيات"}
               </p>
             </Panel>
           )}
@@ -173,7 +173,7 @@ export function LeaderboardPage() {
               ))}
             </ul>
             <p className="mt-4 text-xs leading-6 text-[var(--p-dim)]">
-              المستوى يُحسب من ساعات الفصل الحالي.
+              المستوى يُحسب من ساعات الفصل الحالي
             </p>
           </Panel>
         </aside>
@@ -213,7 +213,7 @@ export function LeaderboardPage() {
               {podium.length === 3 && <Podium rows={podium} />}
               {!q.trim() && ranked.length === 0 && (
                 <p className="p-well mb-3 px-4 py-3 text-center text-sm leading-7 text-[var(--p-soft)]">
-                  ما فيه ساعات معتمدة في هذي الفترة بعد. أول ما تنعتمد أول مهمة يبدأ الترتيب.
+                  ما فيه ساعات معتمدة في هذي الفترة بعد. أول ما تنعتمد أول مهمة يبدأ الترتيب
                 </p>
               )}
               <ol className="mt-2 flex flex-col gap-1">

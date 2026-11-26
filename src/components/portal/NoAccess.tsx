@@ -8,7 +8,7 @@ export function NoAccess() {
       <EmptyState
         icon={Lock}
         title="هذي الصفحة لقادة اللجان والمبادرة"
-        body="ما عندك صلاحية تشوفها."
+        body="ما عندك صلاحية تشوفها"
         action={
           <Link to="/portal" className="p-btn-ghost">
             رجوع لحسابي

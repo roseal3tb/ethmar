@@ -174,7 +174,7 @@ function CreateTaskForm({ onDone }: { onDone: (id: string) => void }) {
       <DialogHeader className="text-start sm:text-start">
         <DialogTitle className="font-display text-xl">مهمة جديدة</DialogTitle>
         <DialogDescription className="text-[var(--p-soft)]">
-          حدد لمن تظهر، وكيف تتوزع، وكم ساعة تستحق.
+          حدد لمن تظهر، وكيف تتوزع، وكم ساعة تستحق
         </DialogDescription>
       </DialogHeader>
 

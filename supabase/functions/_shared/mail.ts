@@ -27,7 +27,17 @@ export async function sendMail(to: string, subject: string, html: string, text: 
   await smtp().sendMail({ from, to, subject, html, text });
 }
 
-export { chips, countWord, hoursAr, layout, memberCard, noteCard, SITE, stats, steps } from "./template.ts";
+export {
+  chips,
+  countWord,
+  hoursAr,
+  layout,
+  memberCard,
+  noteCard,
+  SITE,
+  stats,
+  steps,
+} from "./template.ts";
 export type { EmailCopy } from "./template.ts";
 
 export const cors = {
@@ -36,7 +46,10 @@ export const cors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 export const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, "Content-Type": "application/json" },
+  });
 
 /** The portal's address, taken from the browser that called us (works for preview and production domains). */
 export function portalOrigin(req: Request): string {

@@ -44,13 +44,17 @@ Deno.serve(async (req) => {
   const { data: meId } = await caller.rpc("me_id");
   const { data: task } = await caller
     .from("tasks")
-    .select("id, title, description, audience, mode, hours, seats, due_date, created_by, committee_id, team_id")
+    .select(
+      "id, title, description, audience, mode, hours, seats, due_date, created_by, committee_id, team_id",
+    )
     .eq("id", taskId)
     .maybeSingle();
   if (!task || !meId || task.created_by !== meId) return json({ error: "forbidden" }, 403);
   if (!mailConfigured()) return json({ sent: 0, reason: "smtp_not_configured" });
 
-  const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+  const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+    auth: { persistSession: false },
+  });
   const { data: notes } = await admin
     .from("notifications")
     .select("member_id")
@@ -58,18 +62,23 @@ Deno.serve(async (req) => {
   const ids = [...new Set((notes ?? []).map((n) => n.member_id))];
   if (!ids.length) return json({ sent: 0 });
 
-  const [{ data: emails }, { data: people }, { data: creator }, { data: committee }, { data: team }] =
-    await Promise.all([
-      admin.from("member_emails").select("member_id, email").in("member_id", ids),
-      admin.from("members").select("id, full_name, user_id").in("id", ids),
-      admin.from("members").select("full_name").eq("id", task.created_by).maybeSingle(),
-      task.committee_id
-        ? admin.from("committees").select("title").eq("id", task.committee_id).maybeSingle()
-        : Promise.resolve({ data: null }),
-      task.team_id
-        ? admin.from("teams").select("name").eq("id", task.team_id).maybeSingle()
-        : Promise.resolve({ data: null }),
-    ]);
+  const [
+    { data: emails },
+    { data: people },
+    { data: creator },
+    { data: committee },
+    { data: team },
+  ] = await Promise.all([
+    admin.from("member_emails").select("member_id, email").in("member_id", ids),
+    admin.from("members").select("id, full_name, user_id").in("id", ids),
+    admin.from("members").select("full_name").eq("id", task.created_by).maybeSingle(),
+    task.committee_id
+      ? admin.from("committees").select("title").eq("id", task.committee_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    task.team_id
+      ? admin.from("teams").select("name").eq("id", task.team_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
   const nameOf = new Map((people ?? []).map((p) => [p.id, String(p.full_name)]));
   const dueDate = new Date(task.due_date + "T00:00:00");
   const fmt = (o: Intl.DateTimeFormatOptions) =>
@@ -95,7 +104,11 @@ Deno.serve(async (req) => {
           ? `من ${committee.title}`
           : "";
     const tiles = [
-      { value: String(hours), label: `${countWord(hours, "ساعات", "ساعة")} عند الاعتماد`, gold: true },
+      {
+        value: String(hours),
+        label: `${countWord(hours, "ساعات", "ساعة")} عند الاعتماد`,
+        gold: true,
+      },
       { value: String(Number(task.due_date.slice(8))), label: `${dueDay} · ${dueMonth}` },
       ...(!assigned && seats
         ? [{ value: String(seats), label: countWord(seats, "مقاعد متاحة", "مقعد متاح") }]
@@ -108,15 +121,19 @@ Deno.serve(async (req) => {
       eyebrow: `مرحبًا ${first}`,
       heading: String(task.title),
       intro: assigned
-        ? `أسند لك ${from} هذي المهمة، وتنحسب ساعاتها أول ما ينعتمد تسليمك.`
-        : `نزّل ${from} مهمة جديدة ${task.audience === "team" ? "لفريقك" : task.audience === "leaders" ? "لقادة اللجان" : "للجنة"}، وتقدر تسحبها الحين.`,
+        ? `أسند لك ${from} هذي المهمة، وتنحسب ساعاتها أول ما ينعتمد تسليمك`
+        : `نزّل ${from} مهمة جديدة ${task.audience === "team" ? "لفريقك" : task.audience === "leaders" ? "لقادة اللجان" : "للجنة"}، وتقدر تسحبها الحين`,
       blocks: [
         chips([
-          task.audience === "team" && team?.name ? String(team.name) : (AUDIENCE[task.audience] ?? ""),
+          task.audience === "team" && team?.name
+            ? String(team.name)
+            : (AUDIENCE[task.audience] ?? ""),
           assigned ? "مسندة مباشرة" : "مفتوحة للسحب",
         ]),
         stats(tiles),
-        ...(task.description ? [noteCard("وش المطلوب؟", String(task.description).slice(0, 600))] : []),
+        ...(task.description
+          ? [noteCard("وش المطلوب؟", String(task.description).slice(0, 600))]
+          : []),
       ],
       textDetails: [
         `الساعات: ${hoursAr(hours)} عند الاعتماد`,
@@ -126,7 +143,7 @@ Deno.serve(async (req) => {
       ],
       button: assigned ? "افتح المهمة" : "اسحب المهمة",
       url: link,
-      note: assigned ? undefined : "المقاعد محدودة وأول من يسحب ياخذ مقعده.",
+      note: assigned ? undefined : "المقاعد محدودة وأول من يسحب ياخذ مقعده",
     });
     try {
       await sendMail(e.email, `مهمة جديدة: ${task.title}`, html, text);

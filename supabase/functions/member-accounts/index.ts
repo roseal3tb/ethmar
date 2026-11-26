@@ -42,17 +42,25 @@ Deno.serve(async (req) => {
   if (!/^[0-9a-f-]{36}$/i.test(memberId)) return json({ error: "invalid_member" }, 400);
 
   // Leadership → anyone; committee heads → their committee; team heads → their team's members.
-  const { data: allowed, error: roleError } = await caller.rpc("can_manage_account", { p_member: memberId });
+  const { data: allowed, error: roleError } = await caller.rpc("can_manage_account", {
+    p_member: memberId,
+  });
   if (roleError || allowed !== true) return json({ error: "forbidden" }, 403);
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
   const { data: member } = await admin
     .from("members")
-    .select("id, user_id, full_name, title, member_code, committee_id, team_id, active, must_change_password")
+    .select(
+      "id, user_id, full_name, title, member_code, committee_id, team_id, active, must_change_password",
+    )
     .eq("id", memberId)
     .maybeSingle();
   if (!member || !member.active) return json({ error: "member_not_found" }, 404);
-  const { data: onFile } = await admin.from("member_emails").select("email").eq("member_id", memberId).maybeSingle();
+  const { data: onFile } = await admin
+    .from("member_emails")
+    .select("email")
+    .eq("member_id", memberId)
+    .maybeSingle();
 
   const origin = portalOrigin(req);
   const fullName = String(member.full_name);
@@ -76,10 +84,13 @@ Deno.serve(async (req) => {
     memberCard({ name: fullName, place, code: member.member_code, email });
 
   if (body.action === "invite") {
-    const email = String(body.email || onFile?.email || "").trim().toLowerCase();
+    const email = String(body.email || onFile?.email || "")
+      .trim()
+      .toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ error: "invalid_email" }, 400);
     // An existing login keeps its address; changing it here would split the member from their account.
-    if (member.user_id && onFile?.email && onFile.email !== email) return json({ error: "email_locked" }, 409);
+    if (member.user_id && onFile?.email && onFile.email !== email)
+      return json({ error: "email_locked" }, 409);
     const { data: taken } = await admin
       .from("member_emails")
       .select("member_id")
@@ -118,31 +129,32 @@ Deno.serve(async (req) => {
     const actionUrl = `${origin}/portal?token_hash=${link.properties.hashed_token}&type=${type}`;
     const copy: EmailCopy = choosePassword
       ? {
-          preheader: "حسابك في بوابة أعضاء إثمار جاهز، فعّله واختر كلمة مرورك.",
+          preheader: "حسابك في بوابة أعضاء إثمار جاهز، فعّله واختر كلمة مرورك",
           hero: "حياك الله في إثمار",
           heroSub: "مكانك لمهامك وساعاتك التطوعية وترتيبك",
           eyebrow: `مرحبًا ${firstName}`,
           heading: "حسابك في البوابة جاهز",
           intro:
-            "انضافت لك عضوية في بوابة أعضاء مبادرة إثمار. منها تسحب المهام وتسلّمها، وتنحسب ساعاتك أول ما يعتمدها قائدك.",
+            "انضافت لك عضوية في بوابة أعضاء مبادرة إثمار. منها تسحب المهام وتسلّمها، وتنحسب ساعاتك أول ما يعتمدها قائدك",
           blocks: [card(email), steps(["افتح الرابط", "اختر كلمة مرورك", "اسحب مهمتك"])],
           textDetails: [place, `بريد الدخول: ${email}`],
           button: "فعّل حسابك",
           url: actionUrl,
-          note: "الرابط يشتغل مرة وحدة ولمدة محدودة. إذا انتهى اطلب رابط جديد من قيادة المبادرة.",
+          note: "الرابط يشتغل مرة وحدة ولمدة محدودة. إذا انتهى اطلب رابط جديد من قيادة المبادرة",
         }
       : {
-          preheader: "رابط يدخلك بوابة أعضاء إثمار مباشرة.",
+          preheader: "رابط يدخلك بوابة أعضاء إثمار مباشرة",
           hero: "رابط دخولك",
           heroSub: "لبوابة أعضاء إثمار",
           eyebrow: `مرحبًا ${firstName}`,
           heading: "ادخل حسابك بضغطة",
-          intro: "هذا رابط يدخلك البوابة مباشرة بدون كلمة مرور. بعدها تقدر تدخل بكلمة مرورك المعتادة.",
+          intro:
+            "هذا رابط يدخلك البوابة مباشرة بدون كلمة مرور. بعدها تقدر تدخل بكلمة مرورك المعتادة",
           blocks: [card(email)],
           textDetails: [place, `بريد الدخول: ${email}`],
           button: "ادخل البوابة",
           url: actionUrl,
-          note: "الرابط يشتغل مرة وحدة ولمدة محدودة.",
+          note: "الرابط يشتغل مرة وحدة ولمدة محدودة",
         };
     return await deliver(
       email,
@@ -153,22 +165,25 @@ Deno.serve(async (req) => {
 
   if (body.action === "reset") {
     if (!member.user_id || !onFile?.email) return json({ error: "no_account" }, 409);
-    const { data: link, error } = await admin.auth.admin.generateLink({ type: "recovery", email: onFile.email });
+    const { data: link, error } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email: onFile.email,
+    });
     if (error || !link) return json({ error: "reset_failed" }, 500);
     await admin.from("members").update({ must_change_password: true }).eq("id", memberId);
     const actionUrl = `${origin}/portal?token_hash=${link.properties.hashed_token}&type=recovery`;
     return await deliver(onFile.email, "كلمة مرور جديدة لبوابة أعضاء إثمار", {
-      preheader: "رابط تختار فيه كلمة مرور جديدة لحسابك.",
+      preheader: "رابط تختار فيه كلمة مرور جديدة لحسابك",
       hero: "كلمة مرور جديدة",
       heroSub: "لحسابك في بوابة أعضاء إثمار",
       eyebrow: `مرحبًا ${firstName}`,
       heading: "اختر كلمة مرورك الجديدة",
-      intro: "افتح الرابط واختر كلمة مرور جديدة، وبعدها تدخل فيها البوابة على طول.",
+      intro: "افتح الرابط واختر كلمة مرور جديدة، وبعدها تدخل فيها البوابة على طول",
       blocks: [card(onFile.email)],
       textDetails: [place, `بريد الدخول: ${onFile.email}`],
       button: "اختر كلمة المرور",
       url: actionUrl,
-      note: "الرابط يشتغل مرة وحدة ولمدة محدودة. إذا ما طلبت هذا، تجاهل الرسالة.",
+      note: "الرابط يشتغل مرة وحدة ولمدة محدودة. إذا ما طلبت هذا، تجاهل الرسالة",
     });
   }
 

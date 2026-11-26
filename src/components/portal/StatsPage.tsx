@@ -266,7 +266,7 @@ export function StatsPage() {
           </label>
         </div>
         {rows.length === 0 ? (
-          <EmptyState icon={BarChart3} title="ما فيه بيانات" body="غيّر التصفية أو الفترة." />
+          <EmptyState icon={BarChart3} title="ما فيه بيانات" body="غيّر التصفية أو الفترة" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-sm">

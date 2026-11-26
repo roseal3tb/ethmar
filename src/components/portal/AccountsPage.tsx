@@ -126,13 +126,13 @@ export function AccountsPage() {
         <MailCheck className="mt-1 size-4 shrink-0 text-[var(--p-ok)]" />
         <p>
           كل عضو يوصله إيميل دعوة فيه رابط، يفتحه ويختار كلمة المرور بنفسه. لو الرابط انتهى أو ضاع،
-          أرسل له دعوة جديدة.
-          {whose && <> هنا تشوف أعضاء {whose} اللي تقدر تدعوهم بس.</>}
+          أرسل له دعوة جديدة
+          {whose && <> هنا تشوف أعضاء {whose} اللي تقدر تدعوهم بس</>}
           {noEmail > 0 && (
             <>
               {" "}
               فيه <b className="text-[var(--p-text)]">{noEmail}</b> بدون إيميل مسجّل، تقدر تكتب
-              إيميلاتهم وقت الدعوة.
+              إيميلاتهم وقت الدعوة
             </>
           )}
         </p>
@@ -303,7 +303,7 @@ function LinkResult({
       <DialogHeader className="text-start sm:text-start">
         <DialogTitle className="font-display text-xl">الرابط جاهز</DialogTitle>
         <DialogDescription className="text-[var(--p-soft)]">
-          إرسال الإيميلات ما تفعّل بعد، فانسخ الرابط وأرسله لـ {name} بنفسك. يشتغل مرة وحدة.
+          إرسال الإيميلات ما تفعّل بعد، فانسخ الرابط وأرسله لـ {name} بنفسك. يشتغل مرة وحدة
         </DialogDescription>
       </DialogHeader>
       <p className="p-well break-all p-3 text-xs text-[var(--p-soft)]" dir="ltr">
@@ -376,9 +376,9 @@ function AccountDialog({
         <DialogDescription className="text-[var(--p-soft)]">
           {action.kind === "invite"
             ? isActive(action.member)
-              ? `يوصل ${action.member.full_name} إيميل فيه رابط يدخله البوابة مباشرة.`
-              : `يوصل ${action.member.full_name} إيميل فيه رابط يفعّل فيه حسابه ويختار كلمة المرور.`
-            : `يوصل ${action.member.full_name} إيميل فيه رابط يختار فيه كلمة مرور جديدة.`}
+              ? `يوصل ${action.member.full_name} إيميل فيه رابط يدخله البوابة مباشرة`
+              : `يوصل ${action.member.full_name} إيميل فيه رابط يفعّل فيه حسابه ويختار كلمة المرور`
+            : `يوصل ${action.member.full_name} إيميل فيه رابط يختار فيه كلمة مرور جديدة`}
         </DialogDescription>
       </DialogHeader>
       {action.kind === "invite" && (
@@ -396,7 +396,7 @@ function AccountDialog({
           />
           {locked && (
             <span className="block text-xs leading-6 text-[var(--p-dim)]">
-              عنده حساب على هذا الإيميل، فالدعوة تروح له نفسه.
+              عنده حساب على هذا الإيميل، فالدعوة تروح له نفسه
             </span>
           )}
         </label>
@@ -462,8 +462,8 @@ function BulkInvite({
         </DialogTitle>
         <DialogDescription className="leading-7 text-[var(--p-soft)]">
           {kind === "remind"
-            ? `بيوصل رابط جديد لـ ${members.length} عضو انرسلت لهم دعوة وما فعّلوا. الرابط القديم اللي عندهم يوقف.`
-            : `بيوصل إيميل دعوة لـ ${members.length} عضو عندهم إيميل مسجّل وما انرسلت لهم دعوة قبل.`}
+            ? `بيوصل رابط جديد لـ ${members.length} عضو انرسلت لهم دعوة وما فعّلوا. الرابط القديم اللي عندهم يوقف`
+            : `بيوصل إيميل دعوة لـ ${members.length} عضو عندهم إيميل مسجّل وما انرسلت لهم دعوة قبل`}
         </DialogDescription>
       </DialogHeader>
       {state !== "idle" && (
@@ -483,11 +483,11 @@ function BulkInvite({
         </div>
       )}
       {state === "running" && (
-        <p className="text-xs text-[var(--p-dim)]">خلّي الصفحة مفتوحة لين يخلص الإرسال.</p>
+        <p className="text-xs text-[var(--p-dim)]">خلّي الصفحة مفتوحة لين يخلص الإرسال</p>
       )}
       {state === "done" && links.length > 0 && (
         <p className="rounded-xl bg-[rgb(232_194_122/0.1)] p-3 text-sm text-[var(--p-warn)]">
-          وقّفنا بعد أول عضو لأن إرسال الإيميلات ما تفعّل بعد. فعّله وارجع اضغط «دعوة الكل».
+          وقّفنا بعد أول عضو لأن إرسال الإيميلات ما تفعّل بعد. فعّله وارجع اضغط «دعوة الكل»
         </p>
       )}
       {state === "done" && failed.length > 0 && (
