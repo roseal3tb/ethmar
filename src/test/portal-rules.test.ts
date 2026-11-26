@@ -189,6 +189,17 @@ describe("self-assignment", () => {
   });
 });
 
+describe("leaderboard places", () => {
+  it("gives every ranked member their own place: 1, 2, 3 … with no shared ranks", async () => {
+    await as("vp@ethmar.test");
+    const rows = await mockApi.leaderboard("members", "2000-01-01", "2999-01-01");
+    const ranks = rows.filter((r) => r.rank != null).map((r) => r.rank);
+    expect(ranks.length).toBeGreaterThan(2);
+    expect(ranks).toEqual(ranks.map((_, i) => i + 1));
+    expect(rows.filter((r) => r.rank == null).every((r) => !r.hours)).toBe(true);
+  });
+});
+
 describe("agenda grouping", () => {
   it("groups by Saudi week (Sunday → Saturday) and sinks finished tasks", () => {
     const today = "2026-11-25"; // Wednesday

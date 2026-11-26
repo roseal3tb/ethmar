@@ -951,17 +951,20 @@ export const mockApi: PortalApi = {
   async leaderboard(board: Board, from, to): Promise<LeaderRow[]> {
     const me = meOrThrow();
     const rows = s()
-      .members.filter((m) => boardOf(m.role) === board)
-      .map((m) => ({
+      .members.map((m, order) => ({ m, order }))
+      .filter(({ m }) => boardOf(m.role) === board)
+      .map(({ m, order }) => ({
         m,
+        order,
         h: sumHours(m.id, from, to),
         sem: sumHours(m.id, SEMESTER.starts_on, SEMESTER.ends_on),
       }))
-      .sort((a, b) => b.h - a.h || a.m.full_name.localeCompare(b.m.full_name, "ar"));
-    return rows.map((r) => {
+      // One person per place, like the database: ties go to roster order.
+      .sort((a, b) => b.h - a.h || a.order - b.order);
+    return rows.map((r, i) => {
       const tier = tierFor(r.sem);
       return {
-        rank: r.h > 0 ? 1 + rows.filter((x) => x.h > r.h).length : null,
+        rank: r.h > 0 ? i + 1 : null,
         member_id: r.m.id,
         full_name: r.m.full_name,
         committee_title: structureCommittees.find((c) => c.id === r.m.committee_id)?.title ?? null,

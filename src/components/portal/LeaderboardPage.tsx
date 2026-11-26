@@ -35,12 +35,18 @@ export function LeaderboardPage() {
   const summary = useSummary();
   const myBoard = boardOf(me.role);
   const [board, setBoard] = useState<Board>(myBoard ?? "members");
-  const [period, setPeriod] = useState<Period>("month");
+  // null = not chosen yet: open on this month, or on the semester while this month is still empty.
+  const [picked, setPicked] = useState<Period | null>(null);
   const [q, setQ] = useState("");
   const [showAll, setShowAll] = useState(false);
   const today = todayISO();
   const sem = summary.data?.semester;
 
+
+
+  const monthLb = useLeaderboard(board, monthStart(today), today);
+  const monthEmpty = !!monthLb.data && !monthLb.data.some((r) => r.rank != null);
+  const period: Period = picked ?? (monthEmpty ? "semester" : "month");
   const range = useMemo(() => {
     if (period === "month")
       return {
@@ -58,7 +64,6 @@ export function LeaderboardPage() {
       label: sem?.name ?? "الفصل",
     };
   }, [period, today, sem]);
-
   const lb = useLeaderboard(board, range.from, range.to);
   const rows = lb.data ?? [];
   const meRow = rows.find((r) => r.is_me);
@@ -92,7 +97,7 @@ export function LeaderboardPage() {
             id="lb-period"
             size="sm"
             value={period}
-            onChange={setPeriod}
+            onChange={setPicked}
             options={[
               { value: "month", label: "هذا الشهر" },
               { value: "last", label: "الشهر الماضي" },
