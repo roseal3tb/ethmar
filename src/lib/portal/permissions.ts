@@ -136,3 +136,30 @@ export function inSurveyAudience(
   if (s.audience === "leaders") return m.role !== "member";
   return !!s.project_id && myProjects(m).includes(s.project_id);
 }
+
+/* ───────────── Quality reports (mirror the database rules) ───────────── */
+
+export const QUALITY = "quality";
+export const inQuality = (m: Member | null) => !!m && m.committee_id === QUALITY;
+export const headsQuality = (m: Member | null) => inQuality(m) && isCommitteeHead(m);
+
+/** Reports page: committee heads (their own committee), the quality committee, leadership. */
+export const canSeeReports = (m: Member | null) =>
+  isLeadership(m) || inQuality(m) || isCommitteeHead(m);
+
+export const canViewCommitteeReports = (m: Member | null, committeeId: string) =>
+  isLeadership(m) || inQuality(m) || headsCommittee(m, committeeId);
+
+/** Quality and leadership review sent reports, never their own committee's (leadership excepted). */
+export function canReviewReport(
+  m: Member | null,
+  r: { author_id: string; committee_id: string; status: string },
+): boolean {
+  if (!m || !(isLeadership(m) || inQuality(m))) return false;
+  if (r.author_id === m.id) return false;
+  if (r.committee_id === m.committee_id && !isLeadership(m)) return false;
+  return r.status === "submitted" || r.status === "reviewed";
+}
+
+export const canWriteMonthly = (m: Member | null) => headsQuality(m);
+export const canReadMonthly = (m: Member | null) => inQuality(m) || isLeadership(m);

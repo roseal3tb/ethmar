@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { api } from "./api";
+import { PortalError } from "./errors";
 import type {
   Answers,
   Board,
   Capability,
   HourImportRow,
+  MemberEvaluation,
+  MonthlyFields,
+  ReportFields,
   Member,
   NewSurvey,
   NewTask,
@@ -277,3 +281,56 @@ export function useAdminActions() {
 }
 export const useInactiveMembers = (enabled: boolean) =>
   useQuery({ queryKey: k("inactive"), queryFn: () => api.inactiveMembers(), enabled });
+
+/* ───────────── Quality reports ───────────── */
+
+export const useReports = (fromWeek: string, toWeek: string, enabled = true) =>
+  useQuery({
+    queryKey: k("reports", fromWeek, toWeek),
+    queryFn: () => api.reports(fromWeek, toWeek),
+    enabled,
+    retry: (n, e) => !(e instanceof PortalError && e.code === "not_ready") && n < 2,
+  });
+export const useMonthlyReports = (enabled: boolean) =>
+  useQuery({ queryKey: k("monthly"), queryFn: () => api.monthlyReports(), enabled });
+export const useMonthlyOverview = (month: string, enabled: boolean) =>
+  useQuery({
+    queryKey: k("monthly-overview", month),
+    queryFn: () => api.monthlyOverview(month),
+    enabled,
+  });
+export function useReportActions() {
+  const qc = useQueryClient();
+  const done = () => {
+    qc.invalidateQueries({ queryKey: k("reports") });
+    qc.invalidateQueries({ queryKey: k("monthly-overview") });
+    qc.invalidateQueries({ queryKey: k("notifications") });
+  };
+  return {
+    save: useMutation({
+      mutationFn: (a: {
+        committeeId: string;
+        week: string;
+        fields: ReportFields;
+        evaluations: MemberEvaluation[];
+        submit: boolean;
+      }) => api.saveReport(a.committeeId, a.week, a.fields, a.evaluations, a.submit),
+      onSuccess: done,
+    }),
+    review: useMutation({
+      mutationFn: (a: {
+        id: string;
+        action: "review" | "return";
+        score: number | null;
+        note: string;
+      }) => api.reviewReport(a.id, a.action, a.score, a.note),
+      onSuccess: done,
+    }),
+    remind: useMutation({ mutationFn: (week: string) => api.remindReports(week) }),
+    saveMonthly: useMutation({
+      mutationFn: (a: { month: string; fields: MonthlyFields; publish: boolean }) =>
+        api.saveMonthly(a.month, a.fields, a.publish),
+      onSuccess: () => qc.invalidateQueries({ queryKey: k("monthly") }),
+    }),
+  };
+}

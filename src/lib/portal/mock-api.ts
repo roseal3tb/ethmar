@@ -20,8 +20,14 @@ import {
   isTeamHead,
   myAssignment,
   seatsLeft,
+  canReviewReport,
+  canViewCommitteeReports,
+  headsQuality,
+  inQuality,
 } from "./permissions";
 import type {
+  CommitteeReport,
+  MonthlyReport,
   Achievement,
   Answers,
   Assignment,
@@ -44,7 +50,7 @@ import type {
   Tier,
 } from "./types";
 import { PortalError } from "./errors";
-import { addDays, todayISO } from "./dates";
+import { addDays, monthStart, todayISO, weekStart } from "./dates";
 
 const TIERS: Tier[] = [
   { id: "bronze", name: "برونزي", min_hours: 0 },
@@ -68,6 +74,8 @@ export const MOCK_LOGINS: Record<string, string> = {
   "lead@ethmar.test": "الوليد الرشيد",
   "vp@ethmar.test": "غادة العتيبي",
   "project@ethmar.test": "هالة الطخيم",
+  "quality@ethmar.test": "يارا الحميدان",
+  "qmember@ethmar.test": "آسيا النافع",
 };
 
 /** Emails on file in the preview (member id → email). */
@@ -94,6 +102,8 @@ interface State {
   certificates: (Certificate & { member_id: string })[];
   semesters: Semester[];
   imports: HourImport[];
+  reports: CommitteeReport[];
+  monthly: MonthlyReport[];
   uid: string | null;
 }
 
@@ -474,12 +484,87 @@ function seed(): State {
     certificates: [],
     semesters,
     imports: [],
+    reports: seedReports(members),
+    monthly: [],
     uid: null,
   };
 }
 
+/** Last week: PR sent and reviewed, media sent and waiting, finance still a draft. */
+function seedReports(members: Member[]): CommitteeReport[] {
+  const by = (name: string) => members.find((m) => m.full_name === name)?.id ?? "m1";
+  const last = addDays(weekStart(todayISO()), -7);
+  const evals = (committee: string, author: string) =>
+    members
+      .filter((m) => m.committee_id === committee && m.id !== author)
+      .slice(0, 8)
+      .map((m, i) => ({ member_id: m.id, score: 3 + (i % 3), standout: i === 1, note: "" }));
+  const base = {
+    link: "",
+    reviewed_by: null as string | null,
+    reviewed_at: null as string | null,
+    quality_score: null as number | null,
+    quality_note: "",
+    updated_at: new Date().toISOString(),
+  };
+  const walid = by("الوليد الرشيد");
+  const nouf = by("نوف بن حثلين");
+  const sultan = by("سلطان المتعب");
+  return [
+    {
+      ...base,
+      id: "r1",
+      committee_id: "pr",
+      week_start: last,
+      author_id: walid,
+      status: "reviewed",
+      done: "تواصلنا مع 6 جهات للزيارات، وأكدنا موعد زيارة تداول السعودية",
+      next_plan: "تجهيز خطابات الزيارات الجاية ومتابعة الردود",
+      challenges: "تأخر رد جهتين",
+      support: "",
+      self_score: 4,
+      submitted_at: new Date(Date.now() - 6 * 86400000).toISOString(),
+      reviewed_by: by("يارا الحميدان"),
+      reviewed_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+      quality_score: 4,
+      quality_note: "تقرير واضح، نبي أرقام الجهات المتجاوبة الأسبوع الجاي",
+      evaluations: evals("pr", walid),
+    },
+    {
+      ...base,
+      id: "r2",
+      committee_id: "media",
+      week_start: last,
+      author_id: nouf,
+      status: "submitted",
+      done: "صممنا 4 منشورات للحملة، وغطّينا ورشة الميزانية بالصور",
+      next_plan: "فيديو قصير عن المبادرة",
+      challenges: "",
+      support: "نحتاج كاميرا ثانية للفعاليات الكبيرة",
+      self_score: 5,
+      submitted_at: new Date(Date.now() - 4 * 86400000).toISOString(),
+      evaluations: evals("media", nouf),
+    },
+    {
+      ...base,
+      id: "r3",
+      committee_id: "fin",
+      week_start: last,
+      author_id: sultan,
+      status: "draft",
+      done: "مراجعة محتوى",
+      next_plan: "",
+      challenges: "",
+      support: "",
+      self_score: null,
+      submitted_at: null,
+      evaluations: [],
+    },
+  ];
+}
+
 // The preview keeps its data for the browser tab (sessionStorage), so a reload doesn't lose your clicks.
-const STORE = "ethmar-mock-state-v3";
+const STORE = "ethmar-mock-state-v4";
 let state: State | null = null;
 function s(): State {
   if (!state) {
@@ -1387,6 +1472,234 @@ export const mockApi: PortalApi = {
     if (!m) throw new PortalError("not_found");
     m.capabilities = [...new Set(caps)];
     save();
+  },
+
+  async reports(fromWeek, toWeek) {
+    const me = meOrThrow();
+    return structuredClone(
+      s().reports.filter(
+        (r) =>
+          r.week_start >= fromWeek &&
+          r.week_start <= toWeek &&
+          canViewCommitteeReports(me, r.committee_id),
+      ),
+    ).sort((a, b) => b.week_start.localeCompare(a.week_start));
+  },
+  async saveReport(committeeId, week, fields, evaluations, submit) {
+    const me = meOrThrow();
+    if (!headsCommittee(me, committeeId)) throw new PortalError("forbidden");
+    const thisWeek = weekStart(todayISO());
+    if (weekStart(week) !== week || week > thisWeek || week < addDays(thisWeek, -56))
+      throw new PortalError("invalid_week");
+    if (fields.link && !/^https?:\/\/\S+$/i.test(fields.link))
+      throw new PortalError("invalid_link");
+    if (submit && fields.done.trim().length < 3) throw new PortalError("report_required");
+    for (const e of evaluations) {
+      const m = s().members.find((x) => x.id === e.member_id);
+      if (!m || m.id === me.id || m.committee_id !== committeeId)
+        throw new PortalError("invalid_evaluation");
+      if (e.score != null && (e.score < 1 || e.score > 5))
+        throw new PortalError("invalid_evaluation");
+    }
+    let r = s().reports.find((x) => x.committee_id === committeeId && x.week_start === week);
+    if (r && (r.status === "submitted" || r.status === "reviewed"))
+      throw new PortalError("already_submitted");
+    if (!r) {
+      r = {
+        id: `r${Date.now().toString(36)}`,
+        committee_id: committeeId,
+        week_start: week,
+        author_id: me.id,
+        status: "draft",
+        done: "",
+        next_plan: "",
+        challenges: "",
+        support: "",
+        link: "",
+        self_score: null,
+        submitted_at: null,
+        reviewed_by: null,
+        reviewed_at: null,
+        quality_score: null,
+        quality_note: "",
+        updated_at: new Date().toISOString(),
+        evaluations: [],
+      };
+      s().reports.push(r);
+    }
+    Object.assign(r, {
+      ...fields,
+      author_id: me.id,
+      evaluations: structuredClone(evaluations),
+      updated_at: new Date().toISOString(),
+    });
+    if (submit) {
+      r.status = "submitted";
+      r.submitted_at = new Date().toISOString();
+      const c = structureCommittees.find((x) => x.id === committeeId);
+      s()
+        .members.filter((q) => headsQuality(q) && q.id !== me.id)
+        .forEach((q) =>
+          notify(
+            q.id,
+            "تقرير أسبوعي جديد",
+            `${c?.title ?? ""} · ${me.full_name}`,
+            `/portal/reports?week=${week}&c=${committeeId}`,
+          ),
+        );
+    }
+    save();
+    return r.id;
+  },
+  async reviewReport(id, action, score, note) {
+    const me = meOrThrow();
+    const r = s().reports.find((x) => x.id === id);
+    if (!r) throw new PortalError("not_found");
+    if (!canReviewReport(me, r)) throw new PortalError("forbidden");
+    if (action === "review") {
+      if (score == null || score < 1 || score > 5) throw new PortalError("invalid_score");
+      Object.assign(r, { status: "reviewed", quality_score: score, quality_note: note.trim() });
+    } else {
+      if (note.trim().length < 3) throw new PortalError("note_required");
+      Object.assign(r, { status: "returned", quality_score: null, quality_note: note.trim() });
+    }
+    Object.assign(r, { reviewed_by: me.id, reviewed_at: new Date().toISOString() });
+    s()
+      .members.filter((h) => headsCommittee(h, r.committee_id))
+      .forEach((h) =>
+        notify(
+          h.id,
+          action === "review" ? "راجعت لجنة الجودة تقريركم" : "رجع تقريركم الأسبوعي للتعديل",
+          action === "review" ? `${score} من 5` : note.trim(),
+          `/portal/reports?week=${r.week_start}&c=${r.committee_id}`,
+        ),
+      );
+    save();
+  },
+  async remindReports(week) {
+    const me = meOrThrow();
+    if (!(isLeadership(me) || inQuality(me))) throw new PortalError("forbidden");
+    let n = 0;
+    for (const c of structureCommittees) {
+      const done = s().reports.some(
+        (r) =>
+          r.committee_id === c.id &&
+          r.week_start === week &&
+          (r.status === "submitted" || r.status === "reviewed"),
+      );
+      if (done) continue;
+      for (const h of s().members.filter((m) => headsCommittee(m, c.id))) {
+        notify(
+          h.id,
+          "تذكير: التقرير الأسبوعي",
+          `لجنة الجودة بانتظار تقرير ${c.title}`,
+          `/portal/reports?week=${week}&c=${c.id}`,
+        );
+        n++;
+      }
+    }
+    save();
+    return n;
+  },
+  async monthlyReports() {
+    const me = meOrThrow();
+    return structuredClone(
+      s().monthly.filter((x) => inQuality(me) || (isLeadership(me) && x.status === "published")),
+    ).sort((a, b) => b.month.localeCompare(a.month));
+  },
+  async monthlyOverview(month) {
+    const me = meOrThrow();
+    if (!(isLeadership(me) || inQuality(me))) throw new PortalError("forbidden");
+    const start = monthStart(month);
+    const end = monthStart(addDays(start, 32));
+    const thisWeek = weekStart(todayISO());
+    let weeks = 0;
+    for (let w = weekStart(start); w < end; w = addDays(w, 7)) {
+      const sat = addDays(w, 6);
+      if (sat >= start && sat < end && w <= thisWeek) weeks++;
+    }
+    return structureCommittees.map((c) => {
+      const rs = s().reports.filter((r) => {
+        const sat = addDays(r.week_start, 6);
+        return r.committee_id === c.id && sat >= start && sat < end;
+      });
+      const sent = rs.filter((r) => r.status === "submitted" || r.status === "reviewed");
+      const avg = (xs: (number | null)[]) => {
+        const v = xs.filter((x): x is number => x != null);
+        return v.length ? Math.round((v.reduce((a, b) => a + b, 0) / v.length) * 100) / 100 : null;
+      };
+      const evals = sent.flatMap((r) => r.evaluations);
+      const memberIds = new Set(
+        s()
+          .members.filter((m) => m.committee_id === c.id)
+          .map((m) => m.id),
+      );
+      return {
+        committee_id: c.id,
+        weeks,
+        sent: sent.length,
+        on_time: sent.filter(
+          (r) => r.submitted_at && r.submitted_at.slice(0, 10) <= addDays(r.week_start, 6),
+        ).length,
+        quality_avg: avg(rs.map((r) => r.quality_score)),
+        self_avg: avg(rs.map((r) => r.self_score)),
+        members_avg: avg(evals.map((e) => e.score)),
+        standouts: [...new Set(evals.filter((e) => e.standout).map((e) => e.member_id))],
+        hours: s()
+          .hours.filter(
+            (h) => memberIds.has(h.member_id) && h.earned_on >= start && h.earned_on < end,
+          )
+          .reduce((a, h) => a + h.hours, 0),
+        members: memberIds.size,
+      };
+    });
+  },
+  async saveMonthly(month, fields, publish) {
+    const me = meOrThrow();
+    if (!headsQuality(me)) throw new PortalError("forbidden");
+    const m = monthStart(month);
+    if (m > monthStart(todayISO())) throw new PortalError("invalid_month");
+    if (publish && fields.summary.trim().length < 10) throw new PortalError("report_required");
+    let r = s().monthly.find((x) => x.month === m);
+    if (r?.status === "published" && !publish) throw new PortalError("already_published");
+    const wasDraft = !r || r.status === "draft";
+    if (!r) {
+      r = {
+        id: `mr${Date.now().toString(36)}`,
+        month: m,
+        author_id: me.id,
+        status: "draft",
+        published_at: null,
+        updated_at: "",
+        summary: "",
+        highlights: "",
+        issues: "",
+        recommendations: "",
+        committee_notes: {},
+      };
+      s().monthly.push(r);
+    }
+    Object.assign(r, structuredClone(fields), {
+      author_id: me.id,
+      updated_at: new Date().toISOString(),
+    });
+    if (publish) {
+      r.status = "published";
+      r.published_at ??= new Date().toISOString();
+      if (wasDraft)
+        s()
+          .members.filter((l) => isLeadership(l) && l.id !== me.id)
+          .forEach((l) =>
+            notify(
+              l.id,
+              "تقرير الجودة الشهري",
+              "من لجنة الجودة والتطوير",
+              `/portal/reports?tab=monthly&month=${m}`,
+            ),
+          );
+    }
+    save();
+    return r.id;
   },
 };
 

@@ -5,6 +5,9 @@ import type {
   Board,
   Certificate,
   CertificateCheck,
+  CommitteeMonth,
+  CommitteeReport,
+  MonthlyReport,
   Committee,
   HourImport,
   InactiveMember,
@@ -47,8 +50,17 @@ function sb(): SupabaseClient {
   return client;
 }
 
-function check<T>(res: { data: T; error: { message: string } | null }): T {
-  if (res.error) throw new PortalError(res.error.message);
+function check<T>(res: { data: T; error: { message: string; code?: string } | null }): T {
+  if (res.error) {
+    // A table or function the database doesn't have yet (a part of the portal still being set up).
+    if (
+      res.error.code === "PGRST205" ||
+      res.error.code === "PGRST202" ||
+      res.error.code === "42P01"
+    )
+      throw new PortalError("not_ready");
+    throw new PortalError(res.error.message);
+  }
   return res.data;
 }
 
@@ -491,8 +503,68 @@ export const supabaseApi: PortalApi = {
   async setMemberCapabilities(id, caps) {
     check(await sb().rpc("set_member_capabilities", { p_member: id, p_caps: caps }));
   },
-};
 
+  async reports(fromWeek, toWeek) {
+    const rows = check(
+      await sb()
+        .from("committee_reports")
+        .select("*, evaluations:member_evaluations(member_id, score, standout, note)")
+        .gte("week_start", fromWeek)
+        .lte("week_start", toWeek)
+        .order("week_start", { ascending: false }),
+    ) as CommitteeReport[];
+    return rows;
+  },
+  async saveReport(committeeId, week, fields, evaluations, submit) {
+    return check(
+      await sb().rpc("save_committee_report", {
+        p_committee: committeeId,
+        p_week: week,
+        p_fields: fields,
+        p_evals: evaluations,
+        p_submit: submit,
+      }),
+    ) as string;
+  },
+  async reviewReport(id, action, score, note) {
+    check(
+      await sb().rpc("review_committee_report", {
+        p_report: id,
+        p_action: action,
+        p_score: score,
+        p_note: note,
+      }),
+    );
+  },
+  async remindReports(week) {
+    return num(check(await sb().rpc("remind_committee_reports", { p_week: week })));
+  },
+  async monthlyReports() {
+    return check(
+      await sb().from("monthly_reports").select("*").order("month", { ascending: false }),
+    ) as MonthlyReport[];
+  },
+  async monthlyOverview(month) {
+    const rows = (check(await sb().rpc("monthly_overview", { p_month: month })) ??
+      []) as CommitteeMonth[];
+    return rows.map((r) => ({
+      ...r,
+      hours: num(r.hours),
+      quality_avg: r.quality_avg == null ? null : num(r.quality_avg),
+      self_avg: r.self_avg == null ? null : num(r.self_avg),
+      members_avg: r.members_avg == null ? null : num(r.members_avg),
+    }));
+  },
+  async saveMonthly(month, fields, publish) {
+    return check(
+      await sb().rpc("save_monthly_report", {
+        p_month: month,
+        p_fields: fields,
+        p_publish: publish,
+      }),
+    ) as string;
+  },
+};
 async function edgeError(error: { context?: unknown }): Promise<string> {
   try {
     const res = error.context as Response | undefined;

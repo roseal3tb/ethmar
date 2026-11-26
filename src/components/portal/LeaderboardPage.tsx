@@ -298,7 +298,7 @@ export function LeaderboardPage() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
             transition={{ type: "spring", stiffness: 380, damping: 32 }}
-            className="fixed inset-x-3 bottom-[88px] z-30 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-[rgb(198_164_92/0.4)] bg-[#0b3328]/95 px-4 py-2.5 shadow-[0_14px_40px_-10px_rgb(0_0_0/0.7)] backdrop-blur-xl lg:hidden"
+            className="fixed inset-x-3 bottom-[calc(84px+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-[rgb(198_164_92/0.4)] bg-[#0b3328]/95 px-4 py-2.5 shadow-[0_14px_40px_-10px_rgb(0_0_0/0.7)] backdrop-blur-xl lg:hidden"
             role="status"
           >
             <b className="font-display text-2xl font-extrabold text-[var(--p-gold-soft)]">

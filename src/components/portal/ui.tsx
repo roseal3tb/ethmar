@@ -58,14 +58,18 @@ export function PageHeader({
   return (
     <header className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex min-w-0 items-center gap-3.5">
-        <span className="grid size-12 shrink-0 place-items-center rounded-[14px] border border-[var(--p-line-strong)] bg-[rgb(200_222_211/0.07)] text-[var(--p-soft)]">
-          <Icon className="size-[22px]" />
+        <span className="grid size-11 shrink-0 place-items-center rounded-[14px] border border-[var(--p-line-strong)] bg-[rgb(200_222_211/0.07)] text-[var(--p-soft)] sm:size-12">
+          <Icon className="size-5 sm:size-[22px]" />
         </span>
         <div className="min-w-0">
-          <h1 className="font-display text-2xl font-extrabold leading-tight sm:text-[28px]">
+          <h1 className="font-display text-[22px] font-extrabold leading-tight sm:text-[28px]">
             {title}
           </h1>
-          {subtitle && <p className="mt-0.5 text-sm text-[var(--p-dim)]">{subtitle}</p>}
+          {subtitle && (
+            <p className="mt-0.5 text-[13px] leading-5 text-[var(--p-dim)] sm:text-sm">
+              {subtitle}
+            </p>
+          )}
         </div>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -295,7 +299,7 @@ export function Segmented<T extends string>({
     <div
       role="tablist"
       className={cn(
-        "inline-flex items-center gap-1 rounded-2xl border border-[var(--p-line)] bg-[rgb(200_222_211/0.04)] p-1",
+        "inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-[var(--p-line)] bg-[rgb(200_222_211/0.04)] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
     >

@@ -21,6 +21,7 @@ import { Route as PortalCommunityRouteImport } from './routes/portal/community'
 import { Route as PortalHoursRouteImport } from './routes/portal/hours'
 import { Route as PortalLeaderboardRouteImport } from './routes/portal/leaderboard'
 import { Route as PortalProfileRouteImport } from './routes/portal/profile'
+import { Route as PortalReportsRouteImport } from './routes/portal/reports'
 import { Route as PortalStatsRouteImport } from './routes/portal/stats'
 import { Route as PortalTasksRouteImport } from './routes/portal/tasks'
 import { Route as VerifyIndexRouteImport } from './routes/verify.index'
@@ -90,6 +91,11 @@ const PortalProfileRoute = PortalProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => PortalRoute,
 } as any)
+const PortalReportsRoute = PortalReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => PortalRoute,
+} as any)
 const PortalStatsRoute = PortalStatsRouteImport.update({
   id: '/stats',
   path: '/stats',
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/portal/hours': typeof PortalHoursRoute
   '/portal/leaderboard': typeof PortalLeaderboardRoute
   '/portal/profile': typeof PortalProfileRoute
+  '/portal/reports': typeof PortalReportsRoute
   '/portal/stats': typeof PortalStatsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/verify/$code': typeof VerifyCodeRoute
@@ -164,6 +171,7 @@ export interface FileRoutesByTo {
   '/portal/hours': typeof PortalHoursRoute
   '/portal/leaderboard': typeof PortalLeaderboardRoute
   '/portal/profile': typeof PortalProfileRoute
+  '/portal/reports': typeof PortalReportsRoute
   '/portal/stats': typeof PortalStatsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/verify/$code': typeof VerifyCodeRoute
@@ -187,6 +195,7 @@ export interface FileRoutesById {
   '/portal/hours': typeof PortalHoursRoute
   '/portal/leaderboard': typeof PortalLeaderboardRoute
   '/portal/profile': typeof PortalProfileRoute
+  '/portal/reports': typeof PortalReportsRoute
   '/portal/stats': typeof PortalStatsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/verify/$code': typeof VerifyCodeRoute
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/portal/hours'
     | '/portal/leaderboard'
     | '/portal/profile'
+    | '/portal/reports'
     | '/portal/stats'
     | '/portal/tasks'
     | '/verify/$code'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/portal/hours'
     | '/portal/leaderboard'
     | '/portal/profile'
+    | '/portal/reports'
     | '/portal/stats'
     | '/portal/tasks'
     | '/verify/$code'
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/portal/hours'
     | '/portal/leaderboard'
     | '/portal/profile'
+    | '/portal/reports'
     | '/portal/stats'
     | '/portal/tasks'
     | '/verify/$code'
@@ -362,6 +374,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalProfileRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/portal/reports': {
+      id: '/portal/reports'
+      path: '/reports'
+      fullPath: '/portal/reports'
+      preLoaderRoute: typeof PortalReportsRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/portal/stats': {
       id: '/portal/stats'
       path: '/stats'
@@ -427,6 +446,7 @@ interface PortalRouteChildren {
   PortalHoursRoute: typeof PortalHoursRoute
   PortalLeaderboardRoute: typeof PortalLeaderboardRoute
   PortalProfileRoute: typeof PortalProfileRoute
+  PortalReportsRoute: typeof PortalReportsRoute
   PortalStatsRoute: typeof PortalStatsRoute
   PortalTasksRoute: typeof PortalTasksRoute
   PortalIndexRoute: typeof PortalIndexRoute
@@ -442,6 +462,7 @@ const PortalRouteChildren: PortalRouteChildren = {
   PortalHoursRoute: PortalHoursRoute,
   PortalLeaderboardRoute: PortalLeaderboardRoute,
   PortalProfileRoute: PortalProfileRoute,
+  PortalReportsRoute: PortalReportsRoute,
   PortalStatsRoute: PortalStatsRoute,
   PortalTasksRoute: PortalTasksRoute,
   PortalIndexRoute: PortalIndexRoute,

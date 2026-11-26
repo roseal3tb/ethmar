@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { mockApi, resetMock } from "@/lib/portal/mock-api";
-import { addDays, todayISO } from "@/lib/portal/dates";
+import { addDays, todayISO, weekStart } from "@/lib/portal/dates";
 import { boardOf, canClaim, canReview, canViewHoursOf } from "@/lib/portal/permissions";
 import { groupTasks, weekEnd } from "@/lib/portal/task-view";
 import type { Member, Task } from "@/lib/portal/types";
@@ -363,5 +363,123 @@ describe("achievements", () => {
     const a = await mockApi.achievements();
     expect(a.find((x) => x.id === "seed")?.unlocked).toBe(true);
     expect(a).toHaveLength(12);
+  });
+});
+
+describe("quality reports", () => {
+  const thisWeek = weekStart(todayISO());
+  const fields = {
+    done: "أنجزنا ورشتين",
+    next_plan: "",
+    challenges: "",
+    support: "",
+    link: "",
+    self_score: 4,
+  };
+
+  it("committee heads write their own committee's report; members and other heads can't", async () => {
+    await as("member@ethmar.test");
+    await expect(mockApi.saveReport("pr", thisWeek, fields, [], true)).rejects.toThrow();
+    expect(await mockApi.reports(thisWeek, thisWeek)).toHaveLength(0);
+
+    await as("lead@ethmar.test"); // الوليد heads PR
+    await expect(mockApi.saveReport("media", thisWeek, fields, [], true)).rejects.toThrow();
+    await expect(
+      mockApi.saveReport("pr", addDays(thisWeek, 7), fields, [], true),
+    ).rejects.toThrow(); // future
+    await expect(
+      mockApi.saveReport("pr", addDays(thisWeek, 1), fields, [], true),
+    ).rejects.toThrow(); // not a Sunday
+    await expect(
+      mockApi.saveReport("pr", thisWeek, { ...fields, done: "" }, [], true),
+    ).rejects.toThrow(); // nothing written
+
+    const mona = await byName("منى الروقي");
+    const outsider = await byName("نوف بن حثلين");
+    await expect(
+      mockApi.saveReport(
+        "pr",
+        thisWeek,
+        fields,
+        [{ member_id: outsider.id, score: 5, standout: false, note: "" }],
+        false,
+      ),
+    ).rejects.toThrow(); // not in PR
+    await mockApi.saveReport(
+      "pr",
+      thisWeek,
+      fields,
+      [{ member_id: mona.id, score: 5, standout: true, note: "" }],
+      true,
+    );
+    await expect(mockApi.saveReport("pr", thisWeek, fields, [], true)).rejects.toThrow(); // already sent
+    const [mine] = await mockApi.reports(thisWeek, thisWeek);
+    expect(mine?.status).toBe("submitted");
+    expect(mine?.evaluations[0]?.score).toBe(5);
+  });
+
+  it("quality reviews or returns; a head can't review; returned reports can be resent", async () => {
+    await as("lead@ethmar.test");
+    const id = await mockApi.saveReport("pr", thisWeek, fields, [], true);
+    await expect(mockApi.reviewReport(id, "review", 4, "")).rejects.toThrow();
+
+    await as("qmember@ethmar.test");
+    await expect(mockApi.reviewReport(id, "review", 9, "")).rejects.toThrow();
+    await expect(mockApi.reviewReport(id, "return", null, "")).rejects.toThrow(); // needs a note
+    await mockApi.reviewReport(id, "return", null, "أضيفوا الأرقام");
+
+    await as("lead@ethmar.test");
+    await mockApi.saveReport(
+      "pr",
+      thisWeek,
+      { ...fields, done: "أنجزنا ورشتين حضرها 60" },
+      [],
+      true,
+    );
+
+    await as("quality@ethmar.test");
+    await mockApi.reviewReport(id, "review", 5, "ممتاز");
+    const r = (await mockApi.reports(thisWeek, thisWeek)).find((x) => x.id === id)!;
+    expect(r.status).toBe("reviewed");
+    expect(r.quality_score).toBe(5);
+  });
+
+  it("the quality committee's own report is graded by leadership only", async () => {
+    await as("quality@ethmar.test");
+    const id = await mockApi.saveReport("quality", thisWeek, fields, [], true);
+    await as("qmember@ethmar.test");
+    await expect(mockApi.reviewReport(id, "review", 4, "")).rejects.toThrow();
+    await as("vp@ethmar.test");
+    await mockApi.reviewReport(id, "review", 4, "");
+  });
+
+  it("monthly: quality heads write, leadership reads only what's published", async () => {
+    const month = todayISO().slice(0, 8) + "01";
+    const f = {
+      summary: "شهر ممتاز للجان",
+      highlights: "",
+      issues: "",
+      recommendations: "",
+      committee_notes: {},
+    };
+    await as("qmember@ethmar.test");
+    await expect(mockApi.saveMonthly(month, f, true)).rejects.toThrow();
+
+    await as("quality@ethmar.test");
+    await mockApi.saveMonthly(month, f, false);
+    await as("vp@ethmar.test");
+    expect(await mockApi.monthlyReports()).toHaveLength(0); // draft is hidden
+    await expect(mockApi.saveMonthly(month, f, true)).rejects.toThrow();
+
+    await as("quality@ethmar.test");
+    await mockApi.saveMonthly(month, f, true);
+    await as("vp@ethmar.test");
+    expect((await mockApi.monthlyReports())[0]?.status).toBe("published");
+    const overview = await mockApi.monthlyOverview(month);
+    expect(overview.length).toBeGreaterThan(5);
+
+    await as("lead@ethmar.test");
+    await expect(mockApi.monthlyOverview(month)).rejects.toThrow();
+    expect(await mockApi.monthlyReports()).toHaveLength(0);
   });
 });

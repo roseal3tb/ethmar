@@ -41,3 +41,22 @@ export function relativeTime(ts: string): string {
   const d = Math.round(h / 24);
   return d === 1 ? "أمس" : `قبل ${d} أيام`;
 }
+
+/** Sunday of the week the day falls in (weeks run Sunday → Saturday). */
+export const weekStart = (iso: string) => addDays(iso, -parse(iso).getDay());
+const MONTH = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", {
+  month: "long",
+  year: "numeric",
+});
+export const monthLabel = (iso: string) => MONTH.format(parse(iso.slice(0, 8) + "01"));
+/** «١٦ – ٢٢ نوفمبر» style label for a week. */
+export function weekLabel(sunday: string): string {
+  const end = addDays(sunday, 6);
+  const a = parse(sunday);
+  const b = parse(end);
+  const day = (d: Date) => d.getDate();
+  const mon = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", { month: "long" });
+  return a.getMonth() === b.getMonth()
+    ? `${day(a)} – ${day(b)} ${mon.format(b)}`
+    : `${day(a)} ${mon.format(a)} – ${day(b)} ${mon.format(b)}`;
+}

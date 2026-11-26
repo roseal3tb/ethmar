@@ -210,33 +210,35 @@ export function AccountsPage() {
               ) : (
                 <Chip tone="dim">لم يُدعَ</Chip>
               )}
-              {isActive(m) ? (
-                <div className="flex gap-1.5">
+              <div className="flex w-full gap-1.5 ps-12 sm:w-auto sm:ps-0 [&>button]:flex-1 sm:[&>button]:flex-none">
+                {isActive(m) ? (
+                  <>
+                    <button
+                      type="button"
+                      className="p-btn-ghost min-h-9 px-3 text-[13px]"
+                      onClick={() => setAction({ kind: "invite", member: m })}
+                      title="إعادة إرسال الدعوة"
+                    >
+                      <Send className="size-3.5" /> دعوة
+                    </button>
+                    <button
+                      type="button"
+                      className="p-btn-ghost min-h-9 px-3 text-[13px]"
+                      onClick={() => setAction({ kind: "reset", member: m })}
+                    >
+                      <KeyRound className="size-3.5" /> كلمة مرور
+                    </button>
+                  </>
+                ) : (
                   <button
                     type="button"
-                    className="p-btn-ghost min-h-9 px-3 text-[13px]"
+                    className="p-btn min-h-9 px-3 text-[13px]"
                     onClick={() => setAction({ kind: "invite", member: m })}
-                    title="إعادة إرسال الدعوة"
                   >
-                    <Send className="size-3.5" /> دعوة
+                    <Send className="size-3.5" /> إرسال دعوة
                   </button>
-                  <button
-                    type="button"
-                    className="p-btn-ghost min-h-9 px-3 text-[13px]"
-                    onClick={() => setAction({ kind: "reset", member: m })}
-                  >
-                    <KeyRound className="size-3.5" /> كلمة مرور
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="p-btn min-h-9 px-3 text-[13px]"
-                  onClick={() => setAction({ kind: "invite", member: m })}
-                >
-                  <Send className="size-3.5" /> إرسال دعوة
-                </button>
-              )}
+                )}
+              </div>
             </li>
           ))}
         </ul>

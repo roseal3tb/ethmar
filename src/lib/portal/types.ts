@@ -365,6 +365,74 @@ export interface InviteResult {
   link?: string;
 }
 
+/* ───────────── Quality reports ───────────── */
+
+export type ReportStatus = "draft" | "submitted" | "reviewed" | "returned";
+
+export interface MemberEvaluation {
+  member_id: string;
+  score: number | null;
+  standout: boolean;
+  note: string;
+}
+
+export interface ReportFields {
+  done: string;
+  next_plan: string;
+  challenges: string;
+  support: string;
+  link: string;
+  self_score: number | null;
+}
+
+/** A committee's weekly report to the quality committee (week = Sunday → Saturday). */
+export interface CommitteeReport extends ReportFields {
+  id: string;
+  committee_id: string;
+  week_start: string;
+  author_id: string;
+  status: ReportStatus;
+  submitted_at: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  quality_score: number | null;
+  quality_note: string;
+  updated_at: string;
+  evaluations: MemberEvaluation[];
+}
+
+export interface MonthlyFields {
+  summary: string;
+  highlights: string;
+  issues: string;
+  recommendations: string;
+  /** Free note per committee id. */
+  committee_notes: Record<string, string>;
+}
+
+export interface MonthlyReport extends MonthlyFields {
+  id: string;
+  month: string;
+  author_id: string;
+  status: "draft" | "published";
+  published_at: string | null;
+  updated_at: string;
+}
+
+/** Numbers behind a month, per committee. */
+export interface CommitteeMonth {
+  committee_id: string;
+  weeks: number;
+  sent: number;
+  on_time: number;
+  quality_avg: number | null;
+  self_avg: number | null;
+  members_avg: number | null;
+  standouts: string[];
+  hours: number;
+  members: number;
+}
+
 export interface PortalApi {
   /** The signed-in auth user id, or null. */
   currentUserId(): Promise<string | null>;
@@ -443,4 +511,24 @@ export interface PortalApi {
   inactiveMembers(): Promise<InactiveMember[]>;
   setMemberActive(id: string, active: boolean): Promise<void>;
   setMemberCapabilities(id: string, caps: Capability[]): Promise<void>;
+
+  /** Weekly reports the caller may see, for weeks starting between the two Sundays. */
+  reports(fromWeek: string, toWeek: string): Promise<CommitteeReport[]>;
+  saveReport(
+    committeeId: string,
+    week: string,
+    fields: ReportFields,
+    evaluations: MemberEvaluation[],
+    submit: boolean,
+  ): Promise<string>;
+  reviewReport(
+    id: string,
+    action: "review" | "return",
+    score: number | null,
+    note: string,
+  ): Promise<void>;
+  remindReports(week: string): Promise<number>;
+  monthlyReports(): Promise<MonthlyReport[]>;
+  monthlyOverview(month: string): Promise<CommitteeMonth[]>;
+  saveMonthly(month: string, fields: MonthlyFields, publish: boolean): Promise<string>;
 }
