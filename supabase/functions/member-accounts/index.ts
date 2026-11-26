@@ -1,4 +1,4 @@
-// Ethmar portal — member accounts (leadership / admins only).
+// Ethmar portal — member accounts (each leader for their own people; leadership for everyone).
 //
 // POST { action: "invite", member_id, email? } → creates the login for a member who has none yet
 //   (email from the request, or the one already on file) and emails them an invitation link.
