@@ -172,6 +172,21 @@ describe("self-assignment", () => {
     await mockApi.reviewTask(id, lead.id, true, "");
   });
 
+  it("only the admin may approve her own work", async () => {
+    const rose = await as("rose@ethmar.test");
+    const id = await mockApi.createTask({
+      ...base,
+      audience: "people",
+      committee_id: rose.committee_id!,
+      mode: "assigned",
+      targets: [rose.id],
+    });
+    await mockApi.submitTask(id, { note: "تم", link: "", files: [] });
+    await mockApi.reviewTask(id, rose.id, true, "");
+    const a = (await mockApi.tasks()).find((x) => x.id === id)!.assignments[0]!;
+    expect(a.status).toBe("approved");
+  });
+
   it("a creator can take a seat on their own open task", async () => {
     const lead = await as("lead@ethmar.test");
     const id = await mockApi.createTask({

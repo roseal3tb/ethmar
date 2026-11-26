@@ -959,8 +959,8 @@ export const mockApi: PortalApi = {
         h: sumHours(m.id, from, to),
         sem: sumHours(m.id, SEMESTER.starts_on, SEMESTER.ends_on),
       }))
-      // One person per place, like the database: ties go to roster order.
-      .sort((a, b) => b.h - a.h || a.order - b.order);
+      // One person per place, like the database: ties go to semester hours, then roster order.
+      .sort((a, b) => b.h - a.h || b.sem - a.sem || a.order - b.order);
     return rows.map((r, i) => {
       const tier = tierFor(r.sem);
       return {

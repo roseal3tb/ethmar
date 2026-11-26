@@ -526,7 +526,7 @@ function CreateTaskForm({
               );
             })}
           </ul>
-          {selfOn && (
+          {selfOn && !me.is_admin && (
             <p className="text-xs text-[var(--p-dim)]">
               لما تسلّمها، يعتمد ساعاتك شخص غيرك من المسؤولين
             </p>

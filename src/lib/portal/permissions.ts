@@ -57,7 +57,9 @@ export function canReview(
   task: Task,
   submitter: Member | undefined,
 ): boolean {
-  if (!me || !submitter || me.id === submitter.id) return false;
+  if (!me || !submitter) return false;
+  if (me.is_admin) return true; // the admin may approve anything, her own work included
+  if (me.id === submitter.id) return false;
   if (task.audience === "leaders") return isLeadership(me);
   if (task.audience === "project") return canManageProject(me, task.project_id);
   if (me.is_admin) return true;
