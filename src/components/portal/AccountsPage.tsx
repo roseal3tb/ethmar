@@ -375,7 +375,9 @@ function AccountDialog({
         </DialogTitle>
         <DialogDescription className="text-[var(--p-soft)]">
           {action.kind === "invite"
-            ? `يوصل ${action.member.full_name} إيميل فيه رابط يفعّل فيه حسابه ويختار كلمة المرور.`
+            ? isActive(action.member)
+              ? `يوصل ${action.member.full_name} إيميل فيه رابط يدخله البوابة مباشرة.`
+              : `يوصل ${action.member.full_name} إيميل فيه رابط يفعّل فيه حسابه ويختار كلمة المرور.`
             : `يوصل ${action.member.full_name} إيميل فيه رابط يختار فيه كلمة مرور جديدة.`}
         </DialogDescription>
       </DialogHeader>
