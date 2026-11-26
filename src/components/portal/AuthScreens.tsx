@@ -1,5 +1,16 @@
-import { motion } from "framer-motion";
-import { Eye, EyeOff, KeyRound, Loader2, LogOut, Mail, ShieldCheck, UserX } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ArrowRight,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  LogOut,
+  Mail,
+  MailCheck,
+  ShieldCheck,
+  UserX,
+} from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Wordmark } from "@/components/site/Wordmark";
@@ -115,8 +126,139 @@ function Field({
 }
 
 export function LoginScreen() {
-  const { linkError } = useSession();
+  const [mode, setMode] = useState<"login" | "forgot">("login");
   const [email, setEmail] = useState("");
+  return (
+    <AuthFrame>
+      <div className="mb-6 lg:hidden">
+        <Wordmark affiliation={false} />
+      </div>
+      <AnimatePresence mode="wait" initial={false}>
+        {mode === "login" ? (
+          <motion.div
+            key="login"
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 16 }}
+            transition={{ duration: 0.35, ease: EASE }}
+          >
+            <LoginForm email={email} setEmail={setEmail} onForgot={() => setMode("forgot")} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="forgot"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.35, ease: EASE }}
+          >
+            <ForgotForm initialEmail={email} onBack={() => setMode("login")} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <p className="mt-6 text-center text-sm">
+        <Link to="/" className="text-[var(--p-soft)] hover:text-[var(--p-text)]">
+          › الرجوع للموقع
+        </Link>
+      </p>
+    </AuthFrame>
+  );
+}
+
+function ForgotForm({ initialEmail, onBack }: { initialEmail: string; onBack: () => void }) {
+  const [email, setEmail] = useState(initialEmail);
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError("اكتب بريدك صح");
+    setBusy(true);
+    setError(null);
+    try {
+      await api.requestPasswordHelp(email);
+      setSent(true);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (sent)
+    return (
+      <div className="p-card flex flex-col items-center gap-4 p-8 text-center">
+        <motion.span
+          initial={{ scale: 0.4, rotate: -20, opacity: 0 }}
+          animate={{ scale: 1, rotate: 0, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 260, damping: 16 }}
+          className="grid size-16 place-items-center rounded-full bg-[rgb(143_217_179/0.12)] text-[var(--p-ok)]"
+        >
+          <MailCheck className="size-7" />
+        </motion.span>
+        <h2 className="font-display text-xl font-extrabold">شيّك إيميلك</h2>
+        <p className="text-sm leading-7 text-[var(--p-soft)]">
+          إذا <span dir="ltr">{email.trim()}</span> مسجّل عندنا، بيوصلك رابط تختار فيه كلمة مرور
+          جديدة خلال دقايق. شوف الرسائل غير المرغوبة إذا ما لقيته
+        </p>
+        <button type="button" className="p-btn-ghost" onClick={onBack}>
+          <ArrowRight className="size-4" /> رجوع لتسجيل الدخول
+        </button>
+      </div>
+    );
+
+  return (
+    <form onSubmit={submit} className="p-card space-y-5 p-6 sm:p-8" noValidate>
+      <div className="space-y-1.5">
+        <h2 className="font-display text-2xl font-extrabold">نسيت كلمة المرور؟</h2>
+        <p className="text-sm leading-6 text-[var(--p-dim)]">
+          اكتب بريدك ونرسل لك رابط تختار فيه كلمة مرور جديدة
+        </p>
+      </div>
+      <Field label="البريد الإلكتروني" icon={Mail}>
+        <input
+          className="p-input ps-11"
+          type="email"
+          dir="ltr"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoFocus
+        />
+      </Field>
+      {error && (
+        <p
+          role="alert"
+          className="rounded-xl bg-[rgb(242_165_142/0.1)] px-3 py-2 text-sm text-[var(--p-bad)]"
+        >
+          {error}
+        </p>
+      )}
+      <button type="submit" className="p-btn w-full" disabled={busy}>
+        {busy && <Loader2 className="size-4 animate-spin" />} أرسل الرابط
+      </button>
+      <button
+        type="button"
+        onClick={onBack}
+        className="w-full text-center text-sm text-[var(--p-dim)] hover:text-[var(--p-text)]"
+      >
+        رجوع لتسجيل الدخول
+      </button>
+    </form>
+  );
+}
+
+function LoginForm({
+  email,
+  setEmail,
+  onForgot,
+}: {
+  email: string;
+  setEmail: (v: string) => void;
+  onForgot: () => void;
+}) {
+  const { linkError } = useSession();
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -140,10 +282,7 @@ export function LoginScreen() {
   }
 
   return (
-    <AuthFrame>
-      <div className="mb-6 lg:hidden">
-        <Wordmark affiliation={false} />
-      </div>
+    <>
       <form
         onSubmit={submit}
         className="p-card space-y-5 p-6 shadow-[0_30px_80px_-40px_rgb(0_0_0/0.7)] sm:p-8"
@@ -158,8 +297,8 @@ export function LoginScreen() {
             role="alert"
             className="rounded-xl bg-[rgb(232_194_122/0.1)] px-3 py-2 text-sm leading-6 text-[var(--p-warn)]"
           >
-            الرابط انتهى أو انستخدم قبل. لو اخترت كلمة مرور ادخل فيها، وإلا اطلب رابط جديد من قيادة
-            المبادرة
+            الرابط انتهى أو انستخدم قبل. لو اخترت كلمة مرور ادخل فيها، وإلا اضغط «نسيت كلمة المرور»
+            ويوصلك رابط جديد
           </p>
         )}
         <Field label="البريد الإلكتروني" icon={Mail}>
@@ -208,9 +347,16 @@ export function LoginScreen() {
           {busy && <Loader2 className="size-4 animate-spin" />}
           دخول
         </button>
-        <p className="text-center text-[13px] leading-6 text-[var(--p-dim)]">
-          ما وصلتك دعوة أو نسيت كلمة المرور؟ تواصل مع قيادة المبادرة ويوصلك رابط على إيميلك
-        </p>
+        <div className="flex items-center justify-between gap-3 text-[13px]">
+          <button
+            type="button"
+            onClick={onForgot}
+            className="font-bold text-[var(--p-gold-soft)] underline-offset-4 hover:underline"
+          >
+            نسيت كلمة المرور؟
+          </button>
+          <span className="text-[var(--p-dim)]">ما وصلتك دعوة؟ كلّم قائدك</span>
+        </div>
       </form>
       {usingMock && (
         <MockPicker
@@ -220,12 +366,7 @@ export function LoginScreen() {
           }}
         />
       )}
-      <p className="mt-6 text-center text-sm">
-        <Link to="/" className="text-[var(--p-soft)] hover:text-[var(--p-text)]">
-          › الرجوع للموقع
-        </Link>
-      </p>
-    </AuthFrame>
+    </>
   );
 }
 
@@ -252,10 +393,14 @@ function MockPicker({ onPick }: { onPick: (email: string) => void }) {
 export function ChangePasswordForm({
   onDone,
   title = "اختر كلمة مرور جديدة",
+  requireCurrent = false,
 }: {
   onDone?: () => void;
   title?: string | undefined;
+  /** Logged-in change: ask for the current password first. */
+  requireCurrent?: boolean | undefined;
 }) {
+  const [current, setCurrent] = useState("");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [busy, setBusy] = useState(false);
@@ -263,12 +408,15 @@ export function ChangePasswordForm({
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (requireCurrent && !current) return setError("اكتب كلمة مرورك الحالية");
     if (pw.length < 8) return setError("كلمة المرور لازم تكون ٨ أحرف على الأقل");
+    if (requireCurrent && pw === current) return setError("اختر كلمة مختلفة عن الحالية");
     if (pw !== pw2) return setError("كلمتا المرور غير متطابقتين");
     setBusy(true);
     setError(null);
     try {
-      await api.changePassword(pw);
+      if (requireCurrent) await api.changeOwnPassword(current, pw);
+      else await api.changePassword(pw);
       onDone?.();
     } catch (err) {
       setError(errorMessage(err));
@@ -280,6 +428,18 @@ export function ChangePasswordForm({
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
       <h2 className="font-display text-xl font-extrabold">{title}</h2>
+      {requireCurrent && (
+        <Field label="كلمة المرور الحالية" icon={KeyRound}>
+          <input
+            className="p-input ps-11"
+            type="password"
+            dir="ltr"
+            autoComplete="current-password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+          />
+        </Field>
+      )}
       <Field label="كلمة المرور الجديدة" icon={KeyRound}>
         <input
           className="p-input ps-11"
@@ -317,14 +477,29 @@ export function ChangePasswordForm({
   );
 }
 
-export function FirstPasswordScreen({ onDone }: { onDone: () => void }) {
+export function FirstPasswordScreen({
+  onDone,
+  reason = "first",
+}: {
+  onDone: () => void;
+  reason?: "first" | "recovery";
+}) {
   const { me, signOut } = useSession();
   return (
     <AuthFrame>
       <div className="p-card space-y-5 p-6 sm:p-8">
-        <p className="text-sm text-[var(--p-soft)]">
-          حياك الله <b className="text-[var(--p-text)]">{me?.full_name}</b> 👋 قبل ما تبدأ، غيّر
-          كلمة المرور المؤقتة اللي وصلتك
+        <p className="text-sm leading-7 text-[var(--p-soft)]">
+          {reason === "recovery" ? (
+            <>
+              أهلًا <b className="text-[var(--p-text)]">{me?.full_name}</b>، اختر كلمة مرور جديدة
+              لحسابك وبعدها تدخل البوابة على طول
+            </>
+          ) : (
+            <>
+              حياك الله <b className="text-[var(--p-text)]">{me?.full_name}</b> 👋 قبل ما تبدأ، اختر
+              كلمة المرور اللي بتدخل فيها البوابة
+            </>
+          )}
         </p>
         <ChangePasswordForm onDone={onDone} />
         <button

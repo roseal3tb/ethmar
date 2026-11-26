@@ -1,6 +1,6 @@
-import { motion } from "framer-motion";
-import { Crown, Search, Trophy } from "lucide-react";
-import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Crown, Hourglass, Search, Sparkles, Trophy } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { addDays, monthStart, todayISO } from "@/lib/portal/dates";
 import { boardOf } from "@/lib/portal/permissions";
@@ -68,6 +68,17 @@ export function LeaderboardPage() {
     q.trim() || ranked.length < 3 ? [] : ranked.filter((r) => r.rank! <= 3).slice(0, 3);
   const restAll = q.trim() ? shown : rows.filter((r) => !podium.includes(r));
   const LIMIT = 17;
+  const meCard = useRef<HTMLElement>(null);
+  const [meHidden, setMeHidden] = useState(false);
+  useEffect(() => {
+    const el = meCard.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => setMeHidden(!e!.isIntersecting), {
+      rootMargin: "-80px 0px 0px 0px",
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [meRow?.member_id]);
   const rest = showAll || q.trim() ? restAll : restAll.filter((r, i) => i < LIMIT || r.is_me);
 
   return (
@@ -103,8 +114,9 @@ export function LeaderboardPage() {
               { value: "leaders", label: "القادة" },
             ]}
           />
+          {period === "month" && <MonthCountdown />}
           {meRow ? (
-            <section className="p-card relative overflow-hidden p-6">
+            <section ref={meCard} className="p-card relative overflow-hidden p-6">
               <div
                 aria-hidden="true"
                 className="absolute inset-x-0 top-0 h-1"
@@ -210,7 +222,9 @@ export function LeaderboardPage() {
             <EmptyState icon={Trophy} title="ما فيه ترتيب بعد" />
           ) : (
             <>
-              {podium.length === 3 && <Podium rows={podium} />}
+              {podium.length === 3 && (
+                <Podium rows={podium} standout={period === "semester" ? null : range.label} />
+              )}
               {!q.trim() && ranked.length === 0 && (
                 <p className="p-well mb-3 px-4 py-3 text-center text-sm leading-7 text-[var(--p-soft)]">
                   ما فيه ساعات معتمدة في هذي الفترة بعد. أول ما تنعتمد أول مهمة يبدأ الترتيب
@@ -276,11 +290,71 @@ export function LeaderboardPage() {
           )}
         </section>
       </div>
+
+      <AnimatePresence>
+        {meRow && meHidden && (
+          <motion.div
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 40, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 380, damping: 32 }}
+            className="fixed inset-x-3 bottom-[88px] z-30 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-[rgb(198_164_92/0.4)] bg-[#0b3328]/95 px-4 py-2.5 shadow-[0_14px_40px_-10px_rgb(0_0_0/0.7)] backdrop-blur-xl lg:hidden"
+            role="status"
+          >
+            <b className="font-display text-2xl font-extrabold text-[var(--p-gold-soft)]">
+              {meRow.rank != null ? `#${meRow.rank}` : "–"}
+            </b>
+            <span className="min-w-0 flex-1 text-sm">
+              <b className="block">ترتيبك</b>
+              <span className="text-xs text-[var(--p-dim)]">{range.label}</span>
+            </span>
+            <span className="text-sm font-bold">{hoursLabel(meRow.hours ?? 0)}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function Podium({ rows }: { rows: LeaderRow[] }) {
+/** Time left in the month: the monthly board closes at its end. */
+function MonthCountdown() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const d = new Date(now);
+  const end = new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
+  const left = Math.max(0, end - now);
+  const days = Math.floor(left / 86_400_000);
+  const hours = Math.floor((left % 86_400_000) / 3_600_000);
+  const total = end - new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+  return (
+    <section className="p-card flex items-center gap-4 p-4">
+      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[rgb(198_164_92/0.12)] text-[var(--p-gold-soft)]">
+        <Hourglass className="p-hourglass size-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] text-[var(--p-dim)]">باقي على نهاية الشهر</p>
+        <p className="font-display text-lg font-extrabold">
+          {days > 0 ? `${days} ${days > 2 && days < 11 ? "أيام" : "يوم"} و` : ""}
+          {hours} {hours > 2 && hours < 11 ? "ساعات" : "ساعة"}
+        </p>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgb(200_222_211/0.1)]">
+          <motion.div
+            className="h-full rounded-full bg-[var(--p-gold)]"
+            style={{ transformOrigin: "right" }}
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 - left / total }}
+            transition={{ duration: 1, ease: EASE }}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Podium({ rows, standout }: { rows: LeaderRow[]; standout: string | null }) {
   const order = [rows[1]!, rows[0]!, rows[2]!];
   const heights = [96, 128, 76];
   return (
@@ -297,7 +371,9 @@ function Podium({ rows }: { rows: LeaderRow[] }) {
             className="p-lift relative flex flex-col items-center gap-2 transition-transform duration-300"
           >
             {r.rank === 1 && (
-              <Crown className="absolute -top-6 size-5 text-[var(--p-gold)]" aria-hidden="true" />
+              <span className="p-bob absolute -top-6" aria-hidden="true">
+                <Crown className="size-5 text-[var(--p-gold)]" />
+              </span>
             )}
             <Avatar name={r.full_name} size={r.rank === 1 ? 64 : 52} ring={TIER_COLOR[r.tier_id]} />
             <b className="line-clamp-1 text-[13px] sm:text-sm">
@@ -307,6 +383,17 @@ function Podium({ rows }: { rows: LeaderRow[] }) {
             <span className="line-clamp-1 text-[11px] text-[var(--p-dim)]">
               {r.committee_title?.replace(/^(لجنة|اللجنة) /, "")}
             </span>
+            {r.rank === 1 && standout && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 16, delay: 0.8 }}
+                className="inline-flex items-center gap-1 rounded-full bg-[rgb(198_164_92/0.16)] px-2 py-0.5 text-[10px] font-extrabold text-[var(--p-gold-soft)]"
+                title={`العضو المتميز · ${standout}`}
+              >
+                <Sparkles className="size-3" /> المتميز
+              </motion.span>
+            )}
           </motion.div>
           <motion.div
             className={cn(

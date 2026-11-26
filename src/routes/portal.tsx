@@ -39,14 +39,20 @@ function PortalRoute() {
 
 function Gate() {
   const mounted = useMounted();
-  const { status, me } = useSession();
+  const { status, me, recovery, clearRecovery } = useSession();
   const qc = useQueryClient();
   if (!mounted || status === "loading") return <PortalLoading />;
   if (status === "signed-out") return <LoginScreen />;
   if (status === "unlinked" || !me) return <UnlinkedScreen />;
-  if (me.must_change_password)
+  if (me.must_change_password || recovery)
     return (
-      <FirstPasswordScreen onDone={() => qc.invalidateQueries({ queryKey: ["portal", "me"] })} />
+      <FirstPasswordScreen
+        reason={recovery && !me.must_change_password ? "recovery" : "first"}
+        onDone={() => {
+          clearRecovery();
+          qc.invalidateQueries({ queryKey: ["portal", "me"] });
+        }}
+      />
     );
   return (
     <PortalLayout>

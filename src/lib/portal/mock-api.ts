@@ -5,8 +5,14 @@ import { structureCommittees, structurePeople, structureTeams } from "@/data/str
 import {
   boardOf,
   canClaim,
+  canCreateSurveys,
   canManageAccount,
+  canManageProject,
+  canManageSurvey,
+  canManageTask,
   canReview,
+  canRunProjects,
+  hasCap,
   canViewHoursOf,
   headsCommittee,
   isCommitteeHead,
@@ -16,16 +22,25 @@ import {
   seatsLeft,
 } from "./permissions";
 import type {
+  Achievement,
+  Answers,
   Assignment,
   Board,
+  Certificate,
   HourEntry,
+  HourImport,
   LeaderRow,
+  Me,
   Member,
   NewTask,
   PortalApi,
   PortalNotification,
+  Project,
+  Semester,
   Structure,
+  Survey,
   Task,
+  TaskComment,
   Tier,
 } from "./types";
 import { PortalError } from "./errors";
@@ -52,6 +67,7 @@ export const MOCK_LOGINS: Record<string, string> = {
   "teamlead@ethmar.test": "فهد العقيل",
   "lead@ethmar.test": "الوليد الرشيد",
   "vp@ethmar.test": "غادة العتيبي",
+  "project@ethmar.test": "هالة الطخيم",
 };
 
 /** Emails on file in the preview (member id → email). */
@@ -62,9 +78,22 @@ const nextTier = (h: number) => TIERS.find((t) => t.min_hours > h) ?? null;
 
 interface State {
   members: Member[];
+  inactive: Member[];
   tasks: Task[];
-  hours: HourEntry[];
+  hours: (HourEntry & { import_id?: string | null })[];
   notes: (PortalNotification & { member_id: string })[];
+  comments: TaskComment[];
+  projects: Project[];
+  surveys: Survey[];
+  responses: {
+    survey_id: string;
+    member_id: string;
+    answers: Answers;
+    submitted_at: string | null;
+  }[];
+  certificates: (Certificate & { member_id: string })[];
+  semesters: Semester[];
+  imports: HourImport[];
   uid: string | null;
 }
 
@@ -81,6 +110,7 @@ function seed(): State {
     is_admin: p.name === "روز العتيبي",
     must_change_password: false,
     has_account: Object.values(MOCK_LOGINS).includes(p.name) || i % 3 === 0,
+    capabilities: [],
   }));
   const by = (name: string) => members.find((m) => m.full_name === name)!.id;
   const today = todayISO();
@@ -94,6 +124,7 @@ function seed(): State {
     seats: null,
     status: "active",
     created_at: new Date().toISOString(),
+    project_id: null,
     assignments: [],
     ...o,
   });
@@ -114,6 +145,10 @@ function seed(): State {
     review_note: null,
     reviewed_by: null,
     reviewed_at: null,
+    files: [],
+    extra_hours: null,
+    extra_reason: null,
+    extra_status: null,
     ...extra,
   });
   const lead = by("الوليد الرشيد");
@@ -263,11 +298,188 @@ function seed(): State {
     "شادن الغنام",
   ].forEach((n, i) => add(n, 6 + ((i * 5) % 13), 2 + i, "مهام القيادة"));
   add("روز العتيبي", 30, 45, "بناء بوابة الأعضاء");
-  return { members, tasks, hours, notes: [], uid: null };
+
+  const P = (
+    id: string,
+    name: string,
+    tagline: string,
+    stage: Project["stage"],
+    leads: string[],
+    team: string[],
+    extra: Partial<Project> = {},
+  ): Project => ({
+    id,
+    slug: id,
+    name,
+    tagline,
+    situation: "",
+    problem: "",
+    goal: "",
+    success: "",
+    location: "",
+    stage,
+    starts_on: null,
+    ends_on: null,
+    sort: 0,
+    members: [
+      ...leads.map((n) => ({ member_id: by(n), is_lead: true })),
+      ...team.map((n) => ({ member_id: by(n), is_lead: false })),
+    ],
+    log: [
+      {
+        stage: "planning",
+        note: null,
+        changed_by: null,
+        changed_at: addDays(today, -40) + "T10:00:00Z",
+      },
+    ],
+    ...extra,
+  });
+  const projects: Project[] = [
+    P(
+      "impact",
+      "Impact by Ethmar",
+      "المعرض الرئيسي للمبادرة",
+      "execution",
+      ["هالة الطخيم"],
+      ["منى الروقي", "فهد العقيل", "يزيد الرويتع"],
+      {
+        location: "كافد المالية",
+        situation: "المعرض يجمع الطلاب بالجهات المالية، والتجهيز يحتاج تنسيق بين أكثر من لجنة",
+        problem: "التنسيق مع الجهات والمتطوعين يصير بالرسائل المتفرقة، وتضيع المتابعة",
+        goal: "معرض فيه 20 جهة و800 زائر، بجدول واضح لكل فريق",
+        success:
+          "كل جهة مؤكدة قبل المعرض بأسبوعين\nكل متطوع يعرف مكانه ووقته\nاستبيان رضا بعد المعرض فوق 85٪",
+        log: [
+          {
+            stage: "planning",
+            note: null,
+            changed_by: null,
+            changed_at: addDays(today, -40) + "T10:00:00Z",
+          },
+          {
+            stage: "prep",
+            note: "اعتمدنا المكان",
+            changed_by: null,
+            changed_at: addDays(today, -25) + "T10:00:00Z",
+          },
+          {
+            stage: "execution",
+            note: "بدأ التواصل مع الجهات",
+            changed_by: null,
+            changed_at: addDays(today, -8) + "T10:00:00Z",
+          },
+        ],
+      },
+    ),
+    P(
+      "ambassadors",
+      "سفراء إثمار",
+      "البرنامج التوعوي الرئيسي للمبادرة",
+      "prep",
+      ["جود الطريسي"],
+      ["ريما العتيبي"],
+    ),
+    P(
+      "fintech",
+      "Road to FinTech",
+      "رحلة إلى منظومة التقنية المالية",
+      "planning",
+      ["إبراهيم الموسى"],
+      [],
+    ),
+    P(
+      "sessions",
+      "الجلسات الحوارية",
+      "لقاءات مع خبراء وقادة القطاع",
+      "review",
+      ["حسان البليهد"],
+      [],
+    ),
+    P(
+      "visits",
+      "الزيارات الإثرائية",
+      "زيارات ميدانية لبيئات العمل الحقيقية",
+      "done",
+      ["طلال القزلان"],
+      [],
+    ),
+  ].map((p, i) => ({ ...p, sort: i + 1 }));
+  tasks.push(
+    t({
+      id: "tp1",
+      title: "تأكيد حضور الجهات المشاركة",
+      description: "تواصل مع الجهات في القائمة وأكّد حضورها وعدد ممثليها",
+      audience: "project",
+      project_id: "impact",
+      mode: "open",
+      seats: 3,
+      hours: 4,
+      due_date: addDays(today, 5),
+      created_by: by("هالة الطخيم"),
+    }),
+  );
+  const surveys: Survey[] = [
+    {
+      id: "s1",
+      title: "رأيك في الفصل الأول",
+      description: "خمس دقائق تساعدنا نطوّر تجربة الأعضاء",
+      audience: "all",
+      committee_id: null,
+      project_id: null,
+      questions: [
+        { id: "q1", type: "rating", title: "كم تقيّم تجربتك في المبادرة؟", required: true },
+        {
+          id: "q2",
+          type: "single",
+          title: "وش أكثر شي استفدت منه؟",
+          options: ["المهام", "الفعاليات", "العلاقات", "التطوير الشخصي"],
+          required: true,
+        },
+        {
+          id: "q3",
+          type: "multi",
+          title: "وش تبي نضيف الفصل الجاي؟",
+          options: ["ورش عمل", "زيارات", "مسابقات", "لقاءات اجتماعية"],
+        },
+        { id: "q4", type: "long", title: "اقتراح أو ملاحظة" },
+      ],
+      anonymous: true,
+      deadline: addDays(today, 6) + "T20:59:00Z",
+      status: "open",
+      created_by: by("غادة العتيبي"),
+      created_at: addDays(today, -1) + "T09:00:00Z",
+    },
+  ];
+  const semesters: Semester[] = [{ id: 1, ...SEMESTER }];
+  return {
+    members,
+    inactive: [],
+    tasks,
+    hours,
+    notes: [],
+    comments: [
+      {
+        id: "c1",
+        task_id: "t1",
+        member_id: by("فهد العقيل"),
+        body: "اللي يسحبها ينسق معي قبل الاتصال",
+        created_at: addDays(today, -1) + "T12:00:00Z",
+        reactions: [{ emoji: "👍", member_id: by("منى الروقي") }],
+      },
+    ],
+    projects,
+    surveys,
+    responses: [],
+    certificates: [],
+    semesters,
+    imports: [],
+    uid: null,
+  };
 }
 
 // The preview keeps its data for the browser tab (sessionStorage), so a reload doesn't lose your clicks.
-const STORE = "ethmar-mock-state-v1";
+const STORE = "ethmar-mock-state-v3";
 let state: State | null = null;
 function s(): State {
   if (!state) {
@@ -284,18 +496,29 @@ function s(): State {
 }
 function save() {
   try {
-    const { members, tasks, hours, notes } = s();
-    sessionStorage.setItem(STORE, JSON.stringify({ members, tasks, hours, notes }));
+    const { uid: _uid, ...rest } = s();
+    void _uid;
+    sessionStorage.setItem(STORE, JSON.stringify(rest));
   } catch {
     // ignore
   }
 }
 const listeners = new Set<(id: string | null) => void>();
-const meOrThrow = (): Member => {
+const asMe = (m: Member): Me => ({
+  ...m,
+  project_ids: s()
+    .projects.filter((p) => p.members.some((x) => x.member_id === m.id))
+    .map((p) => p.id),
+  led_project_ids: s()
+    .projects.filter((p) => p.members.some((x) => x.member_id === m.id && x.is_lead))
+    .map((p) => p.id),
+});
+const meOrThrow = (): Me => {
   const m = s().members.find((x) => x.id === s().uid);
   if (!m) throw new PortalError("not_a_member");
-  return m;
+  return asMe(m);
 };
+const memberRaw = () => s().members.find((x) => x.id === s().uid)!;
 const notify = (memberId: string, title: string, body: string, link: string) =>
   s().notes.unshift({
     id: `n${s().notes.length + 1}`,
@@ -322,8 +545,44 @@ function canView(me: Member, t: Task): boolean {
             (a) => s().members.find((m) => m.id === a.member_id)?.team_id === me.team_id,
           )))
     );
+  if (t.audience === "project")
+    return (
+      (me as Me).project_ids.includes(t.project_id ?? "") || canManageProject(me, t.project_id)
+    );
   return t.mode === "open" && isCommitteeHead(me);
 }
+const blankAssignment = (
+  task_id: string,
+  member_id: string,
+  assigned_by: string | null,
+): Assignment => ({
+  task_id,
+  member_id,
+  status: "claimed",
+  assigned_by,
+  claimed_at: new Date().toISOString(),
+  note: null,
+  link: null,
+  submitted_at: null,
+  review_note: null,
+  reviewed_by: null,
+  reviewed_at: null,
+  files: [],
+  extra_hours: null,
+  extra_reason: null,
+  extra_status: null,
+});
+const surveyAudience = (sv: Survey) =>
+  s().members.filter(
+    (m) =>
+      sv.audience === "all" ||
+      (sv.audience === "committee" && m.committee_id === sv.committee_id) ||
+      (sv.audience === "leaders" && m.role !== "member") ||
+      (sv.audience === "project" &&
+        !!s()
+          .projects.find((p) => p.id === sv.project_id)
+          ?.members.some((x) => x.member_id === m.id)),
+  );
 const sumHours = (memberId: string, from: string, to: string) =>
   s()
     .hours.filter((h) => h.member_id === memberId && h.earned_on >= from && h.earned_on <= to)
@@ -361,11 +620,12 @@ export const mockApi: PortalApi = {
   },
   async changePassword(password) {
     if (password.length < 8) throw new PortalError("weak_password");
-    meOrThrow().must_change_password = false;
+    memberRaw().must_change_password = false;
     save();
   },
   async me() {
-    return s().members.find((x) => x.id === s().uid) ?? null;
+    const m = s().members.find((x) => x.id === s().uid);
+    return m ? asMe(m) : null;
   },
   async structure(): Promise<Structure> {
     return {
@@ -396,7 +656,9 @@ export const mockApi: PortalApi = {
     if (
       input.audience === "leaders"
         ? !isLeadership(me)
-        : !(me.is_admin || headsCommittee(me, input.committee_id))
+        : input.audience === "project"
+          ? !canManageProject(me, input.project_id ?? null)
+          : !(me.is_admin || headsCommittee(me, input.committee_id))
     )
       throw new PortalError("forbidden");
     if (input.due_date < todayISO()) throw new PortalError("due_in_past");
@@ -407,8 +669,10 @@ export const mockApi: PortalApi = {
       title: input.title.trim(),
       description: input.description.trim(),
       audience: input.audience,
-      committee_id: input.audience === "leaders" ? null : input.committee_id,
+      committee_id:
+        input.audience === "leaders" || input.audience === "project" ? null : input.committee_id,
       team_id: input.audience === "team" ? input.team_id : null,
+      project_id: input.project_id ?? null,
       mode,
       seats: mode === "open" ? input.seats : null,
       hours: input.hours,
@@ -417,21 +681,7 @@ export const mockApi: PortalApi = {
       created_by: me.id,
       created_at: new Date().toISOString(),
       assignments:
-        mode === "assigned"
-          ? input.targets.map((m) => ({
-              task_id: id,
-              member_id: m,
-              status: "claimed" as const,
-              assigned_by: me.id,
-              claimed_at: new Date().toISOString(),
-              note: null,
-              link: null,
-              submitted_at: null,
-              review_note: null,
-              reviewed_by: null,
-              reviewed_at: null,
-            }))
-          : [],
+        mode === "assigned" ? input.targets.map((m) => blankAssignment(id, m, me.id)) : [],
     };
     s().tasks.push(task);
     task.assignments.forEach((x) =>
@@ -448,19 +698,7 @@ export const mockApi: PortalApi = {
     if (myAssignment(me, t)) throw new PortalError("already_claimed");
     if (seatsLeft(t) === 0) throw new PortalError("no_seats");
     if (!canClaim(me, t, todayISO())) throw new PortalError("forbidden");
-    t.assignments.push({
-      task_id: taskId,
-      member_id: me.id,
-      status: "claimed",
-      assigned_by: null,
-      claimed_at: new Date().toISOString(),
-      note: null,
-      link: null,
-      submitted_at: null,
-      review_note: null,
-      reviewed_by: null,
-      reviewed_at: null,
-    });
+    t.assignments.push(blankAssignment(taskId, me.id, null));
     save();
   },
   async unclaimTask(taskId) {
@@ -472,7 +710,7 @@ export const mockApi: PortalApi = {
     t.assignments = t.assignments.filter((x) => x !== mine);
     save();
   },
-  async submitTask(taskId, note, link) {
+  async submitTask(taskId, { note, link, files, extra }) {
     await pause();
     const me = meOrThrow();
     const t = s().tasks.find((x) => x.id === taskId);
@@ -481,16 +719,22 @@ export const mockApi: PortalApi = {
     if (!t || !mine || !["claimed", "returned"].includes(mine.status))
       throw new PortalError("cannot_submit");
     if (link.trim() && !/^https?:\/\//i.test(link.trim())) throw new PortalError("invalid_link");
+    if (extra && (!(extra.hours > 0 && extra.hours <= 50) || !extra.reason.trim()))
+      throw new PortalError("invalid_extra");
     Object.assign(mine, {
       status: "submitted",
       note: note.trim() || null,
       link: link.trim() || null,
+      files,
       submitted_at: new Date().toISOString(),
       review_note: null,
+      extra_hours: extra ? extra.hours : null,
+      extra_reason: extra ? extra.reason.trim() : null,
+      extra_status: extra ? "pending" : null,
     });
     save();
   },
-  async reviewTask(taskId, memberId, approve, note) {
+  async reviewTask(taskId, memberId, approve, note, extraOk) {
     await pause();
     const me = meOrThrow();
     const t = s().tasks.find((x) => x.id === taskId)!;
@@ -506,18 +750,20 @@ export const mockApi: PortalApi = {
       reviewed_at: new Date().toISOString(),
     });
     if (approve) {
+      const bonus = as.extra_status === "pending" && extraOk ? (as.extra_hours ?? 0) : 0;
+      if (as.extra_status === "pending") as.extra_status = extraOk ? "approved" : "declined";
       s().hours.push({
         id: `h${s().hours.length + 1}`,
         member_id: memberId,
         task_id: taskId,
-        hours: t.hours,
+        hours: t.hours + bonus,
         earned_on: todayISO(),
         description: t.title,
       });
       notify(
         memberId,
         "اعتُمدت مهمتك",
-        `+${t.hours} ساعات · ${t.title}`,
+        `+${t.hours + bonus} ساعات · ${t.title}`,
         `/portal/tasks?task=${taskId}`,
       );
     } else notify(memberId, "رجعت لك مهمة للتعديل", t.title, `/portal/tasks?task=${taskId}`);
@@ -525,7 +771,71 @@ export const mockApi: PortalApi = {
   },
   async setTaskStatus(taskId, status) {
     const t = s().tasks.find((x) => x.id === taskId);
-    if (t) t.status = status;
+    if (!t || !canManageTask(meOrThrow(), t)) throw new PortalError("forbidden");
+    t.status = status;
+    save();
+  },
+  async uploadTaskFile(taskId, file) {
+    const me = meOrThrow();
+    if (file.size > 10 * 1024 * 1024) throw new PortalError("file_too_big");
+    return {
+      path: `${taskId}/${me.id}/${Date.now().toString(36)}-${file.name}`,
+      name: file.name,
+      size: file.size,
+    };
+  },
+  async fileUrl(path) {
+    return `data:text/plain;charset=utf-8,${encodeURIComponent("ملف تجريبي: " + path)}`;
+  },
+  async comments(taskId) {
+    const me = meOrThrow();
+    const t = s().tasks.find((x) => x.id === taskId);
+    if (!t || !canView(me, t)) return [];
+    return structuredClone(s().comments.filter((c) => c.task_id === taskId));
+  },
+  async addComment(taskId, body) {
+    await pause();
+    const me = meOrThrow();
+    const t = s().tasks.find((x) => x.id === taskId);
+    if (!t || !canView(me, t)) throw new PortalError("not_found");
+    if (!body.trim() || body.trim().length > 1000) throw new PortalError("invalid_comment");
+    s().comments.push({
+      id: `c${Date.now()}`,
+      task_id: taskId,
+      member_id: me.id,
+      body: body.trim(),
+      created_at: new Date().toISOString(),
+      reactions: [],
+    });
+    const to = new Set([t.created_by, ...t.assignments.map((a) => a.member_id)]);
+    to.delete(me.id);
+    to.forEach((id) =>
+      notify(
+        id,
+        "تعليق جديد على مهمة",
+        `${me.full_name}: ${body.trim().slice(0, 90)}`,
+        `/portal/tasks?task=${taskId}`,
+      ),
+    );
+    save();
+  },
+  async deleteComment(commentId) {
+    const me = meOrThrow();
+    const c = s().comments.find((x) => x.id === commentId);
+    const t = c && s().tasks.find((x) => x.id === c.task_id);
+    if (!c || !t) throw new PortalError("not_found");
+    if (!(c.member_id === me.id || t.created_by === me.id || isLeadership(me)))
+      throw new PortalError("forbidden");
+    s().comments = s().comments.filter((x) => x.id !== commentId);
+    save();
+  },
+  async toggleReaction(commentId, emoji) {
+    const me = meOrThrow();
+    const c = s().comments.find((x) => x.id === commentId);
+    if (!c) throw new PortalError("not_found");
+    const i = c.reactions.findIndex((r) => r.member_id === me.id && r.emoji === emoji);
+    if (i >= 0) c.reactions.splice(i, 1);
+    else c.reactions.push({ emoji, member_id: me.id });
     save();
   },
   async summary() {
@@ -669,6 +979,414 @@ export const mockApi: PortalApi = {
   },
   async notifyTask() {
     return { sent: 0 };
+  },
+
+  async requestPasswordHelp(email) {
+    await pause();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) throw new PortalError("invalid_email");
+  },
+  async changeOwnPassword(current, next) {
+    await pause();
+    if (current !== MOCK_PASSWORD) throw new PortalError("wrong_password");
+    if (next.length < 8) throw new PortalError("weak_password");
+    if (next === current) throw new PortalError("same_password");
+  },
+
+  async achievements() {
+    const me = meOrThrow();
+    const total = sumHours(me.id, "2000-01-01", "2999-01-01");
+    const mine = s()
+      .tasks.map((t) => ({ t, a: t.assignments.find((x) => x.member_id === me.id) }))
+      .filter((x) => x.a);
+    const done = mine.filter((x) => x.a!.status === "approved");
+    const ontime = done.filter(
+      (x) => (x.a!.submitted_at ?? x.t.due_date).slice(0, 10) <= x.t.due_date,
+    );
+    const voice = s().responses.find((r) => r.member_id === me.id && r.submitted_at);
+    const A = (
+      id: string,
+      progress: number,
+      goal: number,
+      at: string | null = null,
+    ): Achievement => ({
+      id,
+      unlocked: progress >= goal,
+      unlocked_at: progress >= goal ? at : null,
+      progress: Math.min(progress, goal),
+      goal,
+    });
+    return [
+      A("seed", 1, 1, addDays(todayISO(), -60) + "T09:00:00Z"),
+      A("sprout", mine.length ? 1 : 0, 1, mine[0]?.a?.claimed_at ?? null),
+      A("first_fruit", done.length ? 1 : 0, 1, done[0]?.a?.reviewed_at ?? null),
+      A("roots", total, 10),
+      A("basket", done.length, 5),
+      A("on_time", ontime.length, 5),
+      A("voice", voice ? 1 : 0, 1, voice?.submitted_at ?? null),
+      A("trunk", total, 50),
+      A("star", me.full_name === "روز العتيبي" ? 1 : 0, 1, addDays(todayISO(), -30) + "T09:00:00Z"),
+      A("orchard", done.length, 25),
+      A("tree", total, 100),
+      A("leader", me.role !== "member" ? 1 : 0, 1),
+    ];
+  },
+  async semesters() {
+    return structuredClone(s().semesters).sort((a, b) => b.starts_on.localeCompare(a.starts_on));
+  },
+  async saveSemester(x) {
+    if (!hasCap(meOrThrow(), "hours")) throw new PortalError("forbidden");
+    if (x.name.trim().length < 3 || x.ends_on <= x.starts_on)
+      throw new PortalError("invalid_semester");
+    if (
+      s().semesters.some(
+        (o) => o.id !== x.id && o.starts_on <= x.ends_on && x.starts_on <= o.ends_on,
+      )
+    )
+      throw new PortalError("semester_overlap");
+    if (x.id == null) {
+      const id = Math.max(0, ...s().semesters.map((o) => o.id)) + 1;
+      s().semesters.push({ ...x, id });
+      save();
+      return id;
+    }
+    Object.assign(
+      s().semesters.find((o) => o.id === x.id)!,
+      x,
+    );
+    save();
+    return x.id;
+  },
+  async myCertificates() {
+    const me = meOrThrow();
+    return structuredClone(s().certificates.filter((c) => c.member_id === me.id)).reverse();
+  },
+  async issueCertificate(semesterId) {
+    await pause();
+    const me = meOrThrow();
+    const sem = s().semesters.find((x) => x.id === semesterId);
+    const hours = sem
+      ? sumHours(me.id, sem.starts_on, sem.ends_on)
+      : sumHours(me.id, "2000-01-01", "2999-01-01");
+    if (hours <= 0) throw new PortalError("no_hours");
+    const same = s().certificates.find(
+      (c) =>
+        c.member_id === me.id && c.semester_id === semesterId && !c.revoked_at && c.hours === hours,
+    );
+    if (same) return same.code;
+    s()
+      .certificates.filter(
+        (c) => c.member_id === me.id && c.semester_id === semesterId && !c.revoked_at,
+      )
+      .forEach((c) => (c.revoked_at = new Date().toISOString()));
+    const code = Math.random().toString(16).slice(2, 12).toUpperCase().padEnd(10, "0");
+    s().certificates.push({
+      id: code,
+      code,
+      member_id: me.id,
+      semester_id: semesterId,
+      period_label: sem?.name ?? "منذ الانضمام",
+      hours,
+      tasks: s().tasks.filter((t) => myAssignment(me, t)?.status === "approved").length,
+      issued_at: new Date().toISOString(),
+      revoked_at: null,
+    });
+    save();
+    return code;
+  },
+  async verifyCertificate(code) {
+    const c = s().certificates.find(
+      (x) => x.code === code.replace(/[^0-9a-z]/gi, "").toUpperCase(),
+    );
+    if (!c) return { found: false };
+    const m = s().members.find((x) => x.id === c.member_id)!;
+    return {
+      found: true,
+      valid: !c.revoked_at,
+      superseded: !!c.revoked_at,
+      code: c.code,
+      name: m.full_name,
+      committee:
+        structureCommittees.find((x) => x.id === m.committee_id)?.title ?? "قيادة المبادرة",
+      title: m.title,
+      period: c.period_label,
+      hours: c.hours,
+      tasks: c.tasks,
+      issued_at: c.issued_at,
+    };
+  },
+
+  async projects() {
+    meOrThrow();
+    return structuredClone(s().projects).sort((a, b) => a.sort - b.sort);
+  },
+  async createProject(name, tagline) {
+    const me = meOrThrow();
+    if (!canRunProjects(me)) throw new PortalError("forbidden");
+    if (name.trim().length < 2) throw new PortalError("invalid_name");
+    const id = `p${Date.now().toString(36)}`;
+    s().projects.push({
+      id,
+      slug: id,
+      name: name.trim(),
+      tagline: tagline.trim(),
+      situation: "",
+      problem: "",
+      goal: "",
+      success: "",
+      location: "",
+      stage: "planning",
+      starts_on: null,
+      ends_on: null,
+      sort: s().projects.length + 1,
+      members: [],
+      log: [
+        { stage: "planning", note: null, changed_by: me.id, changed_at: new Date().toISOString() },
+      ],
+    });
+    save();
+    return id;
+  },
+  async updateProject(id, fields) {
+    const p = s().projects.find((x) => x.id === id);
+    if (!p || !canManageProject(meOrThrow(), id)) throw new PortalError("forbidden");
+    Object.assign(p, Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined)));
+    save();
+  },
+  async setProjectStage(id, stage, note) {
+    const me = meOrThrow();
+    const p = s().projects.find((x) => x.id === id);
+    if (!p || !canManageProject(me, id)) throw new PortalError("forbidden");
+    if (p.stage === stage) return;
+    p.stage = stage;
+    p.log.push({
+      stage,
+      note: note.trim() || null,
+      changed_by: me.id,
+      changed_at: new Date().toISOString(),
+    });
+    p.members
+      .filter((x) => x.member_id !== me.id)
+      .forEach((x) =>
+        notify(x.member_id, `${p.name} انتقل لمرحلة جديدة`, note, `/portal/projects/${p.id}`),
+      );
+    save();
+  },
+  async setProjectTeam(id, members, leads) {
+    const me = meOrThrow();
+    const p = s().projects.find((x) => x.id === id);
+    if (!p || !canManageProject(me, id)) throw new PortalError("forbidden");
+    const keepLeads =
+      canRunProjects(me) && leads
+        ? leads
+        : p.members.filter((x) => x.is_lead).map((x) => x.member_id);
+    const all = [...new Set([...members, ...keepLeads])];
+    all
+      .filter((mid) => mid !== me.id && !p.members.some((x) => x.member_id === mid))
+      .forEach((mid) => notify(mid, "انضميت لفريق مشروع", p.name, `/portal/projects/${p.id}`));
+    p.members = all.map((mid) => ({ member_id: mid, is_lead: keepLeads.includes(mid) }));
+    save();
+  },
+
+  async surveys() {
+    const me = meOrThrow();
+    return s()
+      .surveys.filter(
+        (sv) => canManageSurvey(me, sv) || surveyAudience(sv).some((m) => m.id === me.id),
+      )
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map((sv) => {
+        const r = s().responses.find((x) => x.survey_id === sv.id && x.member_id === me.id);
+        const manage = canManageSurvey(me, sv);
+        return {
+          ...structuredClone(sv),
+          mine: r ? { answers: r.answers, submitted_at: r.submitted_at } : null,
+          can_manage: manage,
+          submitted: manage
+            ? s().responses.filter((x) => x.survey_id === sv.id && x.submitted_at).length
+            : null,
+          audience_size: manage ? surveyAudience(sv).length : null,
+        };
+      });
+  },
+  async createSurvey(x) {
+    await pause();
+    const me = meOrThrow();
+    const ok =
+      x.audience === "project"
+        ? canManageProject(me, x.project_id)
+        : x.audience === "committee"
+          ? hasCap(me, "surveys") || headsCommittee(me, x.committee_id)
+          : hasCap(me, "surveys");
+    if (!ok || !canCreateSurveys(me)) throw new PortalError("forbidden");
+    if (!x.questions.length) throw new PortalError("invalid_questions");
+    const id = `s${Date.now().toString(36)}`;
+    const sv: Survey = {
+      ...x,
+      id,
+      status: "open",
+      created_by: me.id,
+      created_at: new Date().toISOString(),
+    };
+    s().surveys.push(sv);
+    surveyAudience(sv)
+      .filter((m) => m.id !== me.id)
+      .forEach((m) => notify(m.id, "استبيان جديد", x.title, `/portal/surveys/${id}`));
+    save();
+    return id;
+  },
+  async saveSurveyResponse(id, answers, submit) {
+    await pause();
+    const me = meOrThrow();
+    const sv = s().surveys.find((x) => x.id === id);
+    if (!sv || !surveyAudience(sv).some((m) => m.id === me.id)) throw new PortalError("not_found");
+    if (sv.status !== "open" || (sv.deadline && sv.deadline < new Date().toISOString()))
+      throw new PortalError("survey_closed");
+    let r = s().responses.find((x) => x.survey_id === id && x.member_id === me.id);
+    if (r?.submitted_at) throw new PortalError("already_submitted");
+    if (submit)
+      for (const q of sv.questions) {
+        const v = answers[q.id];
+        if (q.required && (v == null || v === "" || (Array.isArray(v) && !v.length)))
+          throw new PortalError("answers_required");
+      }
+    if (!r) {
+      r = { survey_id: id, member_id: me.id, answers, submitted_at: null };
+      s().responses.push(r);
+    }
+    r.answers = answers;
+    r.submitted_at = submit ? new Date().toISOString() : null;
+    save();
+  },
+  async setSurveyStatus(id, status) {
+    const sv = s().surveys.find((x) => x.id === id);
+    if (!sv || !canManageSurvey(meOrThrow(), sv)) throw new PortalError("forbidden");
+    sv.status = status;
+    save();
+  },
+  async deleteSurvey(id) {
+    const sv = s().surveys.find((x) => x.id === id);
+    if (!sv || !canManageSurvey(meOrThrow(), sv)) throw new PortalError("forbidden");
+    s().surveys = s().surveys.filter((x) => x.id !== id);
+    s().responses = s().responses.filter((x) => x.survey_id !== id);
+    save();
+  },
+  async surveyResults(id) {
+    const sv = s().surveys.find((x) => x.id === id);
+    if (!sv || !canManageSurvey(meOrThrow(), sv)) throw new PortalError("forbidden");
+    return {
+      audience: surveyAudience(sv).length,
+      responses: s()
+        .responses.filter((r) => r.survey_id === id && r.submitted_at)
+        .map((r) => {
+          const m = s().members.find((x) => x.id === r.member_id)!;
+          return {
+            member_id: sv.anonymous ? null : m.id,
+            name: sv.anonymous ? null : m.full_name,
+            committee: sv.anonymous
+              ? null
+              : (structureCommittees.find((c) => c.id === m.committee_id)?.title ?? null),
+            answers: r.answers,
+            submitted_at: sv.anonymous ? null : r.submitted_at,
+          };
+        }),
+    };
+  },
+  async remindSurvey(id) {
+    const me = meOrThrow();
+    const sv = s().surveys.find((x) => x.id === id);
+    if (!sv || !canManageSurvey(me, sv)) throw new PortalError("forbidden");
+    const pending = surveyAudience(sv).filter(
+      (m) =>
+        m.id !== me.id &&
+        !s().responses.some((r) => r.survey_id === id && r.member_id === m.id && r.submitted_at),
+    );
+    pending.forEach((m) =>
+      notify(m.id, "تذكير: استبيان بانتظارك", sv.title, `/portal/surveys/${id}`),
+    );
+    save();
+    return pending.length;
+  },
+
+  async hourImports() {
+    if (!hasCap(meOrThrow(), "hours")) return [];
+    return structuredClone(s().imports).reverse();
+  },
+  async importHours(label, rows) {
+    await pause();
+    const me = meOrThrow();
+    if (!hasCap(me, "hours")) throw new PortalError("forbidden");
+    if (label.trim().length < 2) throw new PortalError("invalid_label");
+    if (
+      !rows.length ||
+      rows.some((r) => !(r.hours > 0 && r.hours <= 500) || r.earned_on > todayISO())
+    )
+      throw new PortalError("invalid_rows");
+    const id = `i${Date.now().toString(36)}`;
+    rows.forEach((r) =>
+      s().hours.push({
+        id: `h${s().hours.length + 1}`,
+        member_id: r.member_id,
+        task_id: null,
+        hours: r.hours,
+        earned_on: r.earned_on,
+        description: r.description?.trim() || label.trim(),
+        import_id: id,
+      }),
+    );
+    s().imports.push({
+      id,
+      label: label.trim(),
+      rows: rows.length,
+      total_hours: rows.reduce((n, r) => n + r.hours, 0),
+      created_by: me.id,
+      created_at: new Date().toISOString(),
+      undone_at: null,
+    });
+    save();
+    return id;
+  },
+  async undoHourImport(id) {
+    if (!hasCap(meOrThrow(), "hours")) throw new PortalError("forbidden");
+    s().hours = s().hours.filter((h) => h.import_id !== id);
+    const imp = s().imports.find((x) => x.id === id);
+    if (imp) imp.undone_at = new Date().toISOString();
+    save();
+  },
+  async inactiveMembers() {
+    if (!isLeadership(meOrThrow())) return [];
+    return s().inactive.map((m) => ({
+      id: m.id,
+      full_name: m.full_name,
+      committee_id: m.committee_id,
+      team_id: m.team_id,
+      role: m.role,
+      title: m.title,
+    }));
+  },
+  async setMemberActive(id, active) {
+    const me = meOrThrow();
+    if (!isLeadership(me) || id === me.id) throw new PortalError("forbidden");
+    if (active) {
+      const m = s().inactive.find((x) => x.id === id);
+      if (m) {
+        s().inactive = s().inactive.filter((x) => x.id !== id);
+        s().members.push(m);
+      }
+    } else {
+      const m = s().members.find((x) => x.id === id);
+      if (m) {
+        s().members = s().members.filter((x) => x.id !== id);
+        s().inactive.push(m);
+      }
+    }
+    save();
+  },
+  async setMemberCapabilities(id, caps) {
+    if (!isLeadership(meOrThrow())) throw new PortalError("forbidden");
+    const m = s().members.find((x) => x.id === id);
+    if (!m) throw new PortalError("not_found");
+    m.capabilities = [...new Set(caps)];
+    save();
   },
 };
 

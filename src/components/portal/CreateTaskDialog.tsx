@@ -8,6 +8,7 @@ import {
   UsersRound,
   UserRoundCheck,
   Crown,
+  FolderKanban,
 } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
@@ -20,25 +21,34 @@ import {
 } from "@/components/ui/dialog";
 import { addDays, todayISO } from "@/lib/portal/dates";
 import { errorMessage } from "@/lib/portal/errors";
-import { COMMITTEE_HEADS, isLeadership } from "@/lib/portal/permissions";
-import { useCreateTask, useDirectory } from "@/lib/portal/queries";
+import { COMMITTEE_HEADS, canManageProject, isLeadership } from "@/lib/portal/permissions";
+import { useCreateTask, useDirectory, useProjects } from "@/lib/portal/queries";
 import { useMe } from "@/lib/portal/session";
 import type { Audience, TaskMode } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 import { Avatar, titleOf } from "./ui";
 import { PSelect } from "./PSelect";
 
-export function CreateTaskButton({ onCreated }: { onCreated?: (id: string) => void }) {
+export function CreateTaskButton({
+  onCreated,
+  projectId,
+  className,
+}: {
+  onCreated?: ((id: string) => void) | undefined;
+  projectId?: string | undefined;
+  className?: string | undefined;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="p-btn" onClick={() => setOpen(true)}>
+      <button type="button" className={cn("p-btn", className)} onClick={() => setOpen(true)}>
         <Plus className="size-4" /> مهمة جديدة
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[92vh] overflow-y-auto rounded-3xl border-[var(--p-line-strong)] bg-[#08291f] sm:max-w-xl">
           {open && (
             <CreateTaskForm
+              projectId={projectId}
               onDone={(id) => {
                 setOpen(false);
                 onCreated?.(id);
@@ -51,9 +61,17 @@ export function CreateTaskButton({ onCreated }: { onCreated?: (id: string) => vo
   );
 }
 
-function CreateTaskForm({ onDone }: { onDone: (id: string) => void }) {
+function CreateTaskForm({
+  onDone,
+  projectId: fixedProject,
+}: {
+  onDone: (id: string) => void;
+  projectId?: string | undefined;
+}) {
   const me = useMe();
   const { dir } = useDirectory();
+  const { data: allProjects = [] } = useProjects();
+  const myProjects = allProjects.filter((p) => canManageProject(me, p.id));
   const create = useCreateTask();
   const leadership = isLeadership(me);
   // Leadership (president / VPs) create tasks for committee leads; the admin may also act inside any committee.
@@ -64,7 +82,11 @@ function CreateTaskForm({ onDone }: { onDone: (id: string) => void }) {
   }, [dir, me]);
   const canCommittee = committees.length > 0 && (me.is_admin || COMMITTEE_HEADS.includes(me.role));
 
-  const [audience, setAudience] = useState<Audience>(canCommittee ? "committee" : "leaders");
+  const [audience, setAudience] = useState<Audience>(
+    fixedProject ? "project" : canCommittee ? "committee" : leadership ? "leaders" : "project",
+  );
+  const [projectId, setProjectId] = useState<string>(fixedProject ?? "");
+  const project = allProjects.find((p) => p.id === (projectId || myProjects[0]?.id));
   const [committeeId, setCommitteeId] = useState<string>(
     me.committee_id && canCommittee ? me.committee_id : (committees[0]?.id ?? ""),
   );
@@ -85,11 +107,14 @@ function CreateTaskForm({ onDone }: { onDone: (id: string) => void }) {
     if (!dir) return [];
     let list = dir.members.filter((m) => m.id !== me.id);
     if (audience === "leaders") list = list.filter((m) => COMMITTEE_HEADS.includes(m.role));
-    else list = list.filter((m) => m.committee_id === committeeId);
+    else if (audience === "project") {
+      const ids = new Set(project?.members.map((x) => x.member_id) ?? []);
+      list = list.filter((m) => ids.has(m.id));
+    } else list = list.filter((m) => m.committee_id === committeeId);
     if (audience === "team") list = list.filter((m) => m.team_id === teamId);
     if (q.trim()) list = list.filter((m) => m.full_name.includes(q.trim()));
     return list;
-  }, [dir, me.id, audience, committeeId, teamId, q]);
+  }, [dir, me.id, audience, committeeId, teamId, q, project]);
 
   const audiences: {
     id: Audience;
@@ -126,6 +151,13 @@ function CreateTaskForm({ onDone }: { onDone: (id: string) => void }) {
       icon: Crown,
       show: leadership,
     },
+    {
+      id: "project",
+      label: "فريق مشروع",
+      hint: "تظهر لأعضاء المشروع",
+      icon: FolderKanban,
+      show: myProjects.length > 0,
+    },
   ];
 
   const errors = {
@@ -136,6 +168,7 @@ function CreateTaskForm({ onDone }: { onDone: (id: string) => void }) {
       effectiveMode === "open" && !(seats >= 1 && seats <= 200) ? "عدد المقاعد غير صحيح" : null,
     targets:
       effectiveMode === "assigned" && targets.length === 0 ? "اختر شخصًا واحدًا على الأقل" : null,
+    project: audience === "project" && !project ? "اختر المشروع" : null,
   };
   const valid = Object.values(errors).every((e) => !e);
 
@@ -148,8 +181,9 @@ function CreateTaskForm({ onDone }: { onDone: (id: string) => void }) {
         title: title.trim(),
         description: description.trim(),
         audience,
-        committee_id: audience === "leaders" ? null : committeeId,
+        committee_id: audience === "leaders" || audience === "project" ? null : committeeId,
         team_id: audience === "team" ? teamId : null,
+        project_id: audience === "project" ? (project?.id ?? null) : null,
         mode: effectiveMode,
         seats: effectiveMode === "open" ? seats : null,
         hours,
@@ -178,7 +212,7 @@ function CreateTaskForm({ onDone }: { onDone: (id: string) => void }) {
         </DialogDescription>
       </DialogHeader>
 
-      {me.is_admin && audience !== "leaders" && (
+      {me.is_admin && audience !== "leaders" && audience !== "project" && (
         <div className="space-y-2">
           <span className="block text-sm font-bold text-[var(--p-soft)]">اللجنة</span>
           <PSelect
@@ -195,44 +229,72 @@ function CreateTaskForm({ onDone }: { onDone: (id: string) => void }) {
         </div>
       )}
 
-      <fieldset className="space-y-2">
-        <legend className="mb-2 text-sm font-bold text-[var(--p-soft)]">لمن تظهر؟</legend>
-        <div className="grid grid-cols-2 gap-2">
-          {audiences
-            .filter((a) => a.show)
-            .map((a) => {
-              const active = audience === a.id;
-              return (
-                <button
-                  key={a.id}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => {
-                    setAudience(a.id);
-                    setTargets([]);
-                  }}
-                  className={cn(
-                    "relative flex items-start gap-3 rounded-2xl border p-3 text-start transition-colors",
-                    active
-                      ? "border-[var(--p-gold)] bg-[rgb(198_164_92/0.08)]"
-                      : "border-[var(--p-line-strong)] hover:bg-[rgb(200_222_211/0.05)]",
-                  )}
-                >
-                  <a.icon
+      {fixedProject ? (
+        <p className="p-well flex items-center gap-2 px-4 py-3 text-sm">
+          <FolderKanban className="size-4 text-[var(--p-gold-soft)]" /> لفريق مشروع{" "}
+          <b>{project?.name ?? ""}</b>
+        </p>
+      ) : (
+        <fieldset className="space-y-2">
+          <legend className="mb-2 text-sm font-bold text-[var(--p-soft)]">لمن تظهر؟</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {audiences
+              .filter((a) => a.show)
+              .map((a) => {
+                const active = audience === a.id;
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      setAudience(a.id);
+                      setTargets([]);
+                    }}
                     className={cn(
-                      "mt-0.5 size-4 shrink-0",
-                      active ? "text-[var(--p-gold-soft)]" : "text-[var(--p-dim)]",
+                      "relative flex items-start gap-3 rounded-2xl border p-3 text-start transition-colors",
+                      active
+                        ? "border-[var(--p-gold)] bg-[rgb(198_164_92/0.08)]"
+                        : "border-[var(--p-line-strong)] hover:bg-[rgb(200_222_211/0.05)]",
                     )}
-                  />
-                  <span>
-                    <b className="block text-sm">{a.label}</b>
-                    <span className="text-xs text-[var(--p-dim)]">{a.hint}</span>
-                  </span>
-                </button>
-              );
-            })}
-        </div>
-      </fieldset>
+                  >
+                    <a.icon
+                      className={cn(
+                        "mt-0.5 size-4 shrink-0",
+                        active ? "text-[var(--p-gold-soft)]" : "text-[var(--p-dim)]",
+                      )}
+                    />
+                    <span>
+                      <b className="block text-sm">{a.label}</b>
+                      <span className="text-xs text-[var(--p-dim)]">{a.hint}</span>
+                    </span>
+                  </button>
+                );
+              })}
+          </div>
+        </fieldset>
+      )}
+
+      <AnimatePresence initial={false}>
+        {audience === "project" && !fixedProject && myProjects.length > 1 && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <PSelect
+              label="المشروع"
+              value={project?.id ?? ""}
+              onChange={(v) => {
+                setProjectId(v);
+                setTargets([]);
+              }}
+              options={myProjects.map((p) => ({ value: p.id, label: p.name }))}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence initial={false}>
         {audience === "team" && (
@@ -404,7 +466,7 @@ function CreateTaskForm({ onDone }: { onDone: (id: string) => void }) {
                     <span className="min-w-0 flex-1">
                       <b className="block truncate text-sm">{m.full_name}</b>
                       <span className="text-xs text-[var(--p-dim)]">
-                        {audience === "leaders"
+                        {audience === "leaders" || audience === "project"
                           ? dir?.committee(m.committee_id)?.name
                           : (dir?.team(m.team_id)?.name ?? titleOf(m))}
                       </span>

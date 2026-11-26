@@ -51,8 +51,18 @@ export const json = (body: unknown, status = 200) =>
     headers: { ...cors, "Content-Type": "application/json" },
   });
 
-/** The portal's address, taken from the browser that called us (works for preview and production domains). */
+/**
+ * The portal's address for links in emails: the calling browser's origin when it is one of ours
+ * (production, its Vercel previews, or a local dev server), otherwise the production site.
+ * Never trust an arbitrary Origin header: a link with a sign-in token must not point elsewhere.
+ */
 export function portalOrigin(req: Request): string {
+  const fallback = Deno.env.get("PORTAL_URL") ?? SITE;
   const o = req.headers.get("origin") ?? "";
-  return /^https?:\/\/[^/]+$/.test(o) ? o : (Deno.env.get("PORTAL_URL") ?? SITE);
+  const ours =
+    o === SITE ||
+    o === fallback ||
+    /^https:\/\/ethmarspp(-[a-z0-9-]+)?\.vercel\.app$/.test(o) ||
+    /^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/.test(o);
+  return ours ? o : fallback;
 }

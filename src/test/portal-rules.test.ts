@@ -34,7 +34,7 @@ describe("task visibility", () => {
     expect(lead).toEqual(expect.arrayContaining(["t1", "t2", "t3", "t4", "t6"]));
     expect(lead).not.toContain("t5");
     await as("vp@ethmar.test");
-    expect((await mockApi.tasks()).length).toBe(7);
+    expect((await mockApi.tasks()).length).toBe(8);
   });
 });
 
@@ -57,7 +57,7 @@ describe("review", () => {
   it("team head approves their team; hours land on the member", async () => {
     await as("member@ethmar.test");
     await mockApi.claimTask("t2");
-    await mockApi.submitTask("t2", "تم", "https://example.com");
+    await mockApi.submitTask("t2", { note: "تم", link: "https://example.com", files: [] });
     const mona = await mockApi.me();
     const before = (await mockApi.summary())!.semester_hours;
     await as("teamlead@ethmar.test"); // فهد — قائد فريق التواصل الخارجي
@@ -191,7 +191,9 @@ describe("closing vs cancelling", () => {
     await as("lead@ethmar.test");
     await mockApi.setTaskStatus("t2", "closed");
     await as("member@ethmar.test");
-    await expect(mockApi.submitTask("t2", "", "")).resolves.toBeUndefined();
+    await expect(
+      mockApi.submitTask("t2", { note: "", link: "", files: [] }),
+    ).resolves.toBeUndefined();
     await as("lead@ethmar.test");
     await mockApi.setTaskStatus("t1", "cancelled");
     await as("member@ethmar.test");
@@ -228,5 +230,138 @@ describe("who may invite whom", () => {
     await as("rose@ethmar.test");
     const vp = await byName("غادة العتيبي");
     await expect(mockApi.inviteMember(vp.id, "other@example.com")).rejects.toThrow();
+  });
+});
+
+const sumHours = async () => (await mockApi.myHours()).reduce((a, h) => a + h.hours, 0);
+
+describe("projects", () => {
+  it("project tasks are for the project's team; its lead creates and reviews them", async () => {
+    await as("lead@ethmar.test"); // not on the impact team
+    expect((await mockApi.tasks()).map((t) => t.id)).not.toContain("tp1");
+
+    await as("member@ethmar.test"); // منى is on the impact team
+    expect((await mockApi.tasks()).map((t) => t.id)).toContain("tp1");
+    await expect(
+      mockApi.createTask({
+        title: "مهمة من عضو",
+        description: "",
+        audience: "project",
+        committee_id: null,
+        team_id: null,
+        project_id: "impact",
+        mode: "open",
+        seats: 1,
+        hours: 1,
+        due_date: addDays(todayISO(), 3),
+        targets: [],
+      }),
+    ).rejects.toThrow();
+    await mockApi.claimTask("tp1");
+    const before = await sumHours();
+    await mockApi.submitTask("tp1", {
+      note: "تم",
+      link: "",
+      files: [],
+      extra: { hours: 2, reason: "احتجت اتصالات إضافية" },
+    });
+
+    await as("project@ethmar.test"); // هالة, the project's lead
+    const mona = await byName("منى الروقي");
+    await mockApi.reviewTask("tp1", mona.id, true, "", true);
+
+    await as("member@ethmar.test");
+    expect(await sumHours()).toBe(before + 4 + 2);
+  });
+
+  it("extra hours can be refused while the task is approved", async () => {
+    await as("member@ethmar.test");
+    await mockApi.claimTask("tp1");
+    const before = await sumHours();
+    await mockApi.submitTask("tp1", {
+      note: "",
+      link: "",
+      files: [],
+      extra: { hours: 3, reason: "x" },
+    });
+    await as("project@ethmar.test");
+    await mockApi.reviewTask("tp1", (await byName("منى الروقي")).id, true, "", false);
+    await as("member@ethmar.test");
+    expect(await sumHours()).toBe(before + 4);
+  });
+});
+
+describe("comments", () => {
+  it("anyone who sees the task can comment and react; reactions toggle", async () => {
+    await as("member@ethmar.test");
+    await mockApi.addComment("t1", "متى آخر موعد للتنسيق؟");
+    let list = await mockApi.comments("t1");
+    const mine = list.find((c) => c.body.startsWith("متى"))!;
+    await mockApi.toggleReaction(mine.id, "🔥");
+    list = await mockApi.comments("t1");
+    expect(list.find((c) => c.id === mine.id)!.reactions).toHaveLength(1);
+    await mockApi.toggleReaction(mine.id, "🔥");
+    list = await mockApi.comments("t1");
+    expect(list.find((c) => c.id === mine.id)!.reactions).toHaveLength(0);
+
+    await as("lead@ethmar.test");
+    await expect(mockApi.addComment("t5", "تعليق")).rejects.toThrow(); // another committee's task
+  });
+});
+
+describe("surveys", () => {
+  it("required answers, one submission, anonymous results", async () => {
+    await as("member@ethmar.test");
+    await expect(mockApi.saveSurveyResponse("s1", { q1: 4 }, true)).rejects.toThrow();
+    await mockApi.saveSurveyResponse("s1", { q1: 4 }, false); // draft is fine
+    await mockApi.saveSurveyResponse("s1", { q1: 4, q2: "المهام" }, true);
+    await expect(mockApi.saveSurveyResponse("s1", { q1: 5, q2: "المهام" }, true)).rejects.toThrow();
+    await expect(mockApi.surveyResults("s1")).rejects.toThrow(); // not hers to read
+
+    await as("vp@ethmar.test"); // غادة made it
+    const r = await mockApi.surveyResults("s1");
+    expect(r.responses).toHaveLength(1);
+    expect(r.responses[0]!.name).toBeNull();
+  });
+});
+
+describe("certificates", () => {
+  it("issues a verifiable certificate and reuses it while nothing changed", async () => {
+    await as("member@ethmar.test");
+    const code = await mockApi.issueCertificate(null);
+    expect(await mockApi.issueCertificate(null)).toBe(code);
+    const check = await mockApi.verifyCertificate(code.toLowerCase());
+    expect(check.found && check.valid).toBe(true);
+    expect(check.name).toBe("منى الروقي");
+    expect((await mockApi.verifyCertificate("0000000000")).found).toBe(false);
+  });
+});
+
+describe("hours import", () => {
+  it("only hours managers import, and an import can be undone", async () => {
+    const mona = await byName("منى الروقي");
+    const row = { member_id: mona.id, hours: 5, earned_on: todayISO(), description: "معرض" };
+    await as("member@ethmar.test");
+    const before = await sumHours();
+    await expect(mockApi.importHours("ملف", [row])).rejects.toThrow();
+
+    await as("rose@ethmar.test");
+    const id = await mockApi.importHours("ملف", [row]);
+    await as("member@ethmar.test");
+    expect(await sumHours()).toBe(before + 5);
+
+    await as("rose@ethmar.test");
+    await mockApi.undoHourImport(id);
+    await as("member@ethmar.test");
+    expect(await sumHours()).toBe(before);
+  });
+});
+
+describe("achievements", () => {
+  it("everyone starts with the seed medal", async () => {
+    await as("member@ethmar.test");
+    const a = await mockApi.achievements();
+    expect(a.find((x) => x.id === "seed")?.unlocked).toBe(true);
+    expect(a).toHaveLength(12);
   });
 });

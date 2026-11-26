@@ -6,13 +6,16 @@ import {
   CheckCheck,
   Clock3,
   ExternalLink,
+  FolderKanban,
   KeyRound,
   ListChecks,
   LogOut,
+  Medal,
   Trophy,
   UserRound,
   Users,
   UserCog,
+  Vote,
 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -21,8 +24,22 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Wordmark } from "@/components/site/Wordmark";
 import { usingMock } from "@/lib/portal/api";
 import { relativeTime } from "@/lib/portal/dates";
-import { canManageAccounts, canReview, canSeeStats, myAssignment } from "@/lib/portal/permissions";
-import { useDirectory, useMarkRead, useNotifications, useTasks } from "@/lib/portal/queries";
+import {
+  canManageAccounts,
+  canReview,
+  canSeeStats,
+  hasCap,
+  inSurveyAudience,
+  isLeadership,
+  myAssignment,
+} from "@/lib/portal/permissions";
+import {
+  useDirectory,
+  useMarkRead,
+  useNotifications,
+  useSurveys,
+  useTasks,
+} from "@/lib/portal/queries";
 import { useMe, useSession } from "@/lib/portal/session";
 import { cn } from "@/lib/utils";
 import { ChangePasswordForm } from "./AuthScreens";
@@ -41,6 +58,7 @@ function useNav(): NavItem[] {
   const me = useMe();
   const { data: tasks } = useTasks();
   const { dir } = useDirectory();
+  const { data: surveys } = useSurveys();
   const badge = useMemo(() => {
     if (!tasks) return 0;
     let n = 0;
@@ -52,15 +70,25 @@ function useNav(): NavItem[] {
     }
     return n;
   }, [tasks, me, dir]);
+  const surveyBadge = (surveys ?? []).filter(
+    (s) =>
+      s.status === "open" &&
+      !s.mine?.submitted_at &&
+      (!s.deadline || new Date(s.deadline).getTime() > Date.now()) &&
+      inSurveyAudience(me, s),
+  ).length;
+  const admin = isLeadership(me) || hasCap(me, "hours");
   return [
     { to: "/portal", label: "حسابي", icon: UserRound, exact: true, mobile: true },
     { to: "/portal/tasks", label: "المهام", icon: ListChecks, badge, mobile: true },
+    { to: "/portal/projects", label: "المشاريع", icon: FolderKanban, mobile: true },
     { to: "/portal/leaderboard", label: "الصدارة", icon: Trophy, mobile: true },
     { to: "/portal/community", label: "المجتمع", icon: Users, mobile: true },
-    { to: "/portal/hours", label: "ساعاتي", icon: Clock3, mobile: true },
+    { to: "/portal/hours", label: "ساعاتي", icon: Clock3 },
+    { to: "/portal/surveys", label: "الاستبيانات", icon: Vote, badge: surveyBadge },
     ...(canSeeStats(me) ? [{ to: "/portal/stats", label: "الإحصائيات", icon: BarChart3 }] : []),
     ...(canManageAccounts(me)
-      ? [{ to: "/portal/accounts", label: "الحسابات", icon: UserCog }]
+      ? [{ to: "/portal/accounts", label: admin ? "الإدارة" : "الحسابات", icon: UserCog }]
       : []),
   ];
 }
@@ -77,17 +105,16 @@ export function PortalLayout({ children }: { children: ReactNode }) {
       <div aria-hidden="true" className="p-aurora pointer-events-none fixed inset-0" />
       <TopBar nav={nav} />
       <main id="main" className="relative mx-auto w-full max-w-[1180px] px-4 pt-6 sm:px-6 sm:pt-8">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={path}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.32, ease: EASE }}
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
+        {/* Enter-only transition: the router swaps the outlet at once, so an exit animation would
+            run on the new page's content and can stall if anything inside keeps animating. */}
+        <motion.div
+          key={path}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, ease: EASE }}
+        >
+          {children}
+        </motion.div>
       </main>
       <Dock nav={nav} path={path} />
     </div>
@@ -217,7 +244,12 @@ function UserMenu({ extra }: { extra: NavItem[] }) {
           className="flex items-center gap-2 rounded-xl p-1 transition-colors hover:bg-[rgb(200_222_211/0.07)]"
           aria-label="قائمة الحساب"
         >
-          <Avatar name={me.full_name} size={34} ring="var(--p-gold)" />
+          <span className="relative">
+            <Avatar name={me.full_name} size={34} ring="var(--p-gold)" />
+            {extra.some((n) => n.badge) && (
+              <span className="absolute -top-0.5 -end-0.5 size-3 rounded-full border-2 border-[#031f19] bg-[var(--p-gold)] md:hidden" />
+            )}
+          </span>
         </PopoverTrigger>
         <PopoverContent
           align="end"
@@ -235,6 +267,13 @@ function UserMenu({ extra }: { extra: NavItem[] }) {
             </div>
           </div>
           <div className="my-1 h-px bg-[var(--p-line)]" />
+          <Link
+            to="/portal/profile"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-[rgb(200_222_211/0.06)]"
+          >
+            <Medal className="size-4 text-[var(--p-gold-soft)]" /> ملفي وأوسمتي
+          </Link>
           {extra.map((n) => (
             <Link
               key={n.to}
@@ -243,6 +282,11 @@ function UserMenu({ extra }: { extra: NavItem[] }) {
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-[rgb(200_222_211/0.06)] md:hidden"
             >
               <n.icon className="size-4 text-[var(--p-dim)]" /> {n.label}
+              {!!n.badge && (
+                <span className="ms-auto grid min-w-5 place-items-center rounded-full bg-[var(--p-gold)] px-1 text-[11px] font-extrabold leading-5 text-[#1d1606]">
+                  {n.badge}
+                </span>
+              )}
             </Link>
           ))}
           <button
@@ -275,6 +319,7 @@ function UserMenu({ extra }: { extra: NavItem[] }) {
           <DialogTitle className="sr-only">تغيير كلمة المرور</DialogTitle>
           <ChangePasswordForm
             title="تغيير كلمة المرور"
+            requireCurrent
             onDone={() => {
               setPwOpen(false);
               toast.success("تم تغيير كلمة المرور");

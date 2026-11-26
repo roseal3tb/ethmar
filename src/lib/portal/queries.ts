@@ -1,7 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { api } from "./api";
-import type { Board, Member, NewTask, Structure, TaskStatus } from "./types";
+import type {
+  Answers,
+  Board,
+  Capability,
+  HourImportRow,
+  Member,
+  NewSurvey,
+  NewTask,
+  ProjectFields,
+  ProjectStage,
+  Semester,
+  Structure,
+  Submission,
+  TaskStatus,
+} from "./types";
 
 const k = (...parts: unknown[]) => ["portal", ...parts];
 
@@ -71,6 +85,11 @@ function useRefreshingMutation<A>(fn: (a: A) => Promise<unknown>) {
         "stats",
         "tiers",
         "notifications",
+        "achievements",
+        "comments",
+        "projects",
+        "surveys",
+        "certificates",
       ])
         qc.invalidateQueries({ queryKey: k(key) });
     },
@@ -80,12 +99,16 @@ function useRefreshingMutation<A>(fn: (a: A) => Promise<unknown>) {
 export const useClaim = () => useRefreshingMutation((id: string) => api.claimTask(id));
 export const useUnclaim = () => useRefreshingMutation((id: string) => api.unclaimTask(id));
 export const useSubmit = () =>
-  useRefreshingMutation((a: { taskId: string; note: string; link: string }) =>
-    api.submitTask(a.taskId, a.note, a.link),
-  );
+  useRefreshingMutation((a: { taskId: string } & Submission) => api.submitTask(a.taskId, a));
 export const useReview = () =>
-  useRefreshingMutation((a: { taskId: string; memberId: string; approve: boolean; note: string }) =>
-    api.reviewTask(a.taskId, a.memberId, a.approve, a.note),
+  useRefreshingMutation(
+    (a: {
+      taskId: string;
+      memberId: string;
+      approve: boolean;
+      note: string;
+      extraOk?: boolean | undefined;
+    }) => api.reviewTask(a.taskId, a.memberId, a.approve, a.note, a.extraOk),
   );
 export const useSetTaskStatus = () =>
   useRefreshingMutation((a: { taskId: string; status: TaskStatus }) =>
@@ -119,3 +142,138 @@ export function useAccountActions() {
     }),
   };
 }
+
+// ------------------------------------------------------------------ v3
+
+export const useComments = (taskId: string) =>
+  useQuery({
+    queryKey: k("comments", taskId),
+    queryFn: () => api.comments(taskId),
+    refetchInterval: 30_000,
+  });
+export function useCommentActions(taskId: string) {
+  const qc = useQueryClient();
+  const done = () => qc.invalidateQueries({ queryKey: k("comments", taskId) });
+  return {
+    add: useMutation({
+      mutationFn: (body: string) => api.addComment(taskId, body),
+      onSuccess: done,
+    }),
+    remove: useMutation({ mutationFn: (id: string) => api.deleteComment(id), onSuccess: done }),
+    react: useMutation({
+      mutationFn: (a: { id: string; emoji: string }) => api.toggleReaction(a.id, a.emoji),
+      onSuccess: done,
+    }),
+  };
+}
+
+export const useAchievements = () =>
+  useQuery({ queryKey: k("achievements"), queryFn: () => api.achievements() });
+export const useSemesters = () =>
+  useQuery({ queryKey: k("semesters"), queryFn: () => api.semesters(), staleTime: 10 * 60_000 });
+export const useSaveSemester = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (x: Omit<Semester, "id"> & { id: number | null }) => api.saveSemester(x),
+    onSuccess: () => qc.invalidateQueries({ queryKey: k("semesters") }),
+  });
+};
+export const useCertificates = () =>
+  useQuery({ queryKey: k("certificates"), queryFn: () => api.myCertificates() });
+export const useIssueCertificate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (semesterId: number | null) => api.issueCertificate(semesterId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: k("certificates") }),
+  });
+};
+
+export const useProjects = () =>
+  useQuery({ queryKey: k("projects"), queryFn: () => api.projects(), staleTime: 60_000 });
+export function useProjectActions() {
+  const qc = useQueryClient();
+  const done = () => {
+    qc.invalidateQueries({ queryKey: k("projects") });
+    qc.invalidateQueries({ queryKey: ["portal", "me"] });
+  };
+  return {
+    create: useMutation({
+      mutationFn: (a: { name: string; tagline: string }) => api.createProject(a.name, a.tagline),
+      onSuccess: done,
+    }),
+    update: useMutation({
+      mutationFn: (a: { id: string; fields: ProjectFields }) => api.updateProject(a.id, a.fields),
+      onSuccess: done,
+    }),
+    stage: useMutation({
+      mutationFn: (a: { id: string; stage: ProjectStage; note: string }) =>
+        api.setProjectStage(a.id, a.stage, a.note),
+      onSuccess: done,
+    }),
+    team: useMutation({
+      mutationFn: (a: { id: string; members: string[]; leads: string[] | null }) =>
+        api.setProjectTeam(a.id, a.members, a.leads),
+      onSuccess: done,
+    }),
+  };
+}
+
+export const useSurveys = () =>
+  useQuery({ queryKey: k("surveys"), queryFn: () => api.surveys(), refetchInterval: 60_000 });
+export const useSurveyResults = (id: string, enabled: boolean) =>
+  useQuery({
+    queryKey: k("surveys", "results", id),
+    queryFn: () => api.surveyResults(id),
+    enabled,
+  });
+export function useSurveyActions() {
+  const qc = useQueryClient();
+  const done = () => {
+    qc.invalidateQueries({ queryKey: k("surveys") });
+    qc.invalidateQueries({ queryKey: k("achievements") });
+  };
+  return {
+    create: useMutation({ mutationFn: (x: NewSurvey) => api.createSurvey(x), onSuccess: done }),
+    save: useMutation({
+      mutationFn: (a: { id: string; answers: Answers; submit: boolean }) =>
+        api.saveSurveyResponse(a.id, a.answers, a.submit),
+      onSuccess: done,
+    }),
+    status: useMutation({
+      mutationFn: (a: { id: string; status: "open" | "closed" }) =>
+        api.setSurveyStatus(a.id, a.status),
+      onSuccess: done,
+    }),
+    remove: useMutation({ mutationFn: (id: string) => api.deleteSurvey(id), onSuccess: done }),
+    remind: useMutation({ mutationFn: (id: string) => api.remindSurvey(id) }),
+  };
+}
+
+export const useHourImports = (enabled: boolean) =>
+  useQuery({ queryKey: k("imports"), queryFn: () => api.hourImports(), enabled });
+export function useAdminActions() {
+  const qc = useQueryClient();
+  const refresh = (...keys: string[]) =>
+    keys.forEach((x) => qc.invalidateQueries({ queryKey: k(x) }));
+  return {
+    importHours: useMutation({
+      mutationFn: (a: { label: string; rows: HourImportRow[] }) => api.importHours(a.label, a.rows),
+      onSuccess: () => refresh("imports", "stats", "leaderboard", "summary", "hours", "tiers"),
+    }),
+    undoImport: useMutation({
+      mutationFn: (id: string) => api.undoHourImport(id),
+      onSuccess: () => refresh("imports", "stats", "leaderboard", "summary", "hours", "tiers"),
+    }),
+    setActive: useMutation({
+      mutationFn: (a: { id: string; active: boolean }) => api.setMemberActive(a.id, a.active),
+      onSuccess: () => refresh("structure", "inactive"),
+    }),
+    setCaps: useMutation({
+      mutationFn: (a: { id: string; caps: Capability[] }) =>
+        api.setMemberCapabilities(a.id, a.caps),
+      onSuccess: () => refresh("structure"),
+    }),
+  };
+}
+export const useInactiveMembers = (enabled: boolean) =>
+  useQuery({ queryKey: k("inactive"), queryFn: () => api.inactiveMembers(), enabled });

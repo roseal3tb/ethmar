@@ -12,7 +12,7 @@ export type Role =
   | "vice_president"
   | "president";
 
-export type Audience = "committee" | "team" | "people" | "leaders";
+export type Audience = "committee" | "team" | "people" | "leaders" | "project";
 export type TaskMode = "open" | "assigned";
 export type TaskStatus = "active" | "closed" | "cancelled";
 export type AssignmentStatus = "claimed" | "submitted" | "returned" | "approved";
@@ -47,6 +47,16 @@ export interface Member {
   is_admin: boolean;
   must_change_password: boolean;
   has_account: boolean;
+  /** Extra powers: hours · surveys · projects · accounts */
+  capabilities: Capability[];
+}
+
+export type Capability = "hours" | "surveys" | "projects" | "accounts";
+
+/** The signed-in member plus what only they need (their projects). */
+export interface Me extends Member {
+  project_ids: string[];
+  led_project_ids: string[];
 }
 
 export interface Assignment {
@@ -61,6 +71,16 @@ export interface Assignment {
   review_note: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
+  files: SubmissionFile[];
+  extra_hours: number | null;
+  extra_reason: string | null;
+  extra_status: "pending" | "approved" | "declined" | null;
+}
+
+export interface SubmissionFile {
+  path: string;
+  name: string;
+  size: number;
 }
 
 export interface Task {
@@ -77,6 +97,7 @@ export interface Task {
   status: TaskStatus;
   created_by: string;
   created_at: string;
+  project_id: string | null;
   assignments: Assignment[];
 }
 
@@ -91,6 +112,176 @@ export interface NewTask {
   hours: number;
   due_date: string;
   targets: string[];
+  project_id?: string | null | undefined;
+}
+
+export interface Submission {
+  note: string;
+  link: string;
+  files: SubmissionFile[];
+  extra?: { hours: number; reason: string } | null | undefined;
+}
+
+export interface TaskComment {
+  id: string;
+  task_id: string;
+  member_id: string;
+  body: string;
+  created_at: string;
+  reactions: { emoji: string; member_id: string }[];
+}
+
+export interface Achievement {
+  id: string;
+  unlocked: boolean;
+  unlocked_at: string | null;
+  progress: number;
+  goal: number;
+}
+
+export interface Semester {
+  id: number;
+  name: string;
+  starts_on: string;
+  ends_on: string;
+}
+
+export interface Certificate {
+  id: string;
+  code: string;
+  semester_id: number | null;
+  period_label: string;
+  hours: number;
+  tasks: number;
+  issued_at: string;
+  revoked_at: string | null;
+}
+
+export interface CertificateCheck {
+  found: boolean;
+  valid?: boolean;
+  superseded?: boolean;
+  code?: string;
+  name?: string;
+  committee?: string;
+  title?: string | null;
+  period?: string;
+  hours?: number;
+  tasks?: number;
+  issued_at?: string;
+}
+
+export type ProjectStage = "planning" | "prep" | "execution" | "review" | "done";
+export interface Project {
+  id: string;
+  slug: string;
+  name: string;
+  tagline: string;
+  situation: string;
+  problem: string;
+  goal: string;
+  success: string;
+  location: string;
+  stage: ProjectStage;
+  starts_on: string | null;
+  ends_on: string | null;
+  sort: number;
+  members: { member_id: string; is_lead: boolean }[];
+  log: {
+    stage: ProjectStage;
+    note: string | null;
+    changed_by: string | null;
+    changed_at: string;
+  }[];
+}
+export type ProjectFields = Partial<
+  Pick<
+    Project,
+    | "name"
+    | "tagline"
+    | "situation"
+    | "problem"
+    | "goal"
+    | "success"
+    | "location"
+    | "starts_on"
+    | "ends_on"
+  >
+>;
+
+export type QuestionType = "short" | "long" | "single" | "multi" | "rating";
+export interface SurveyQuestion {
+  id: string;
+  type: QuestionType;
+  title: string;
+  options?: string[] | undefined;
+  required?: boolean | undefined;
+}
+export type SurveyAudience = "all" | "committee" | "leaders" | "project";
+export interface Survey {
+  id: string;
+  title: string;
+  description: string;
+  audience: SurveyAudience;
+  committee_id: string | null;
+  project_id: string | null;
+  questions: SurveyQuestion[];
+  anonymous: boolean;
+  deadline: string | null;
+  status: "open" | "closed";
+  created_by: string;
+  created_at: string;
+}
+export type Answers = Record<string, string | string[] | number>;
+export interface SurveyListItem extends Survey {
+  mine: { answers: Answers; submitted_at: string | null } | null;
+  can_manage: boolean;
+  submitted: number | null;
+  audience_size: number | null;
+}
+export interface NewSurvey {
+  title: string;
+  description: string;
+  audience: SurveyAudience;
+  committee_id: string | null;
+  project_id: string | null;
+  questions: SurveyQuestion[];
+  anonymous: boolean;
+  deadline: string | null;
+}
+export interface SurveyResults {
+  audience: number;
+  responses: {
+    member_id: string | null;
+    name: string | null;
+    committee: string | null;
+    answers: Answers;
+    submitted_at: string | null;
+  }[];
+}
+
+export interface HourImportRow {
+  member_id: string;
+  hours: number;
+  earned_on: string;
+  description?: string | undefined;
+}
+export interface HourImport {
+  id: string;
+  label: string;
+  rows: number;
+  total_hours: number;
+  created_by: string;
+  created_at: string;
+  undone_at: string | null;
+}
+export interface InactiveMember {
+  id: string;
+  full_name: string;
+  committee_id: string | null;
+  team_id: string | null;
+  role: Role;
+  title: string | null;
 }
 
 export interface Tier {
@@ -182,15 +373,27 @@ export interface PortalApi {
   signOut(): Promise<void>;
   changePassword(password: string): Promise<void>;
 
-  me(): Promise<Member | null>;
+  me(): Promise<Me | null>;
   structure(): Promise<Structure>;
   memberTiers(): Promise<Record<string, { tier_id: string; tier_name: string }>>;
   tasks(): Promise<Task[]>;
   createTask(input: NewTask): Promise<string>;
   claimTask(taskId: string): Promise<void>;
   unclaimTask(taskId: string): Promise<void>;
-  submitTask(taskId: string, note: string, link: string): Promise<void>;
-  reviewTask(taskId: string, memberId: string, approve: boolean, note: string): Promise<void>;
+  submitTask(taskId: string, s: Submission): Promise<void>;
+  reviewTask(
+    taskId: string,
+    memberId: string,
+    approve: boolean,
+    note: string,
+    extraOk?: boolean,
+  ): Promise<void>;
+  uploadTaskFile(taskId: string, file: File): Promise<SubmissionFile>;
+  fileUrl(path: string): Promise<string>;
+  comments(taskId: string): Promise<TaskComment[]>;
+  addComment(taskId: string, body: string): Promise<void>;
+  deleteComment(commentId: string): Promise<void>;
+  toggleReaction(commentId: string, emoji: string): Promise<void>;
   setTaskStatus(taskId: string, status: TaskStatus): Promise<void>;
   summary(): Promise<Summary | null>;
   leaderboard(board: Board, from: string, to: string): Promise<LeaderRow[]>;
@@ -207,4 +410,37 @@ export interface PortalApi {
   verifyLink(tokenHash: string, type: LinkType): Promise<void>;
   /** Emails everyone a newly created task concerns. Best effort. */
   notifyTask(taskId: string): Promise<{ sent: number }>;
+
+  /** Emails a password link to the address if it belongs to a member. Always resolves the same way. */
+  requestPasswordHelp(email: string): Promise<void>;
+  /** Signed-in member changes their own password after confirming the current one. */
+  changeOwnPassword(current: string, next: string): Promise<void>;
+
+  achievements(): Promise<Achievement[]>;
+  semesters(): Promise<Semester[]>;
+  saveSemester(s: Omit<Semester, "id"> & { id: number | null }): Promise<number>;
+  myCertificates(): Promise<Certificate[]>;
+  issueCertificate(semesterId: number | null): Promise<string>;
+  verifyCertificate(code: string): Promise<CertificateCheck>;
+
+  projects(): Promise<Project[]>;
+  createProject(name: string, tagline: string): Promise<string>;
+  updateProject(id: string, fields: ProjectFields): Promise<void>;
+  setProjectStage(id: string, stage: ProjectStage, note: string): Promise<void>;
+  setProjectTeam(id: string, members: string[], leads: string[] | null): Promise<void>;
+
+  surveys(): Promise<SurveyListItem[]>;
+  createSurvey(s: NewSurvey): Promise<string>;
+  saveSurveyResponse(id: string, answers: Answers, submit: boolean): Promise<void>;
+  setSurveyStatus(id: string, status: "open" | "closed"): Promise<void>;
+  deleteSurvey(id: string): Promise<void>;
+  surveyResults(id: string): Promise<SurveyResults>;
+  remindSurvey(id: string): Promise<number>;
+
+  hourImports(): Promise<HourImport[]>;
+  importHours(label: string, rows: HourImportRow[]): Promise<string>;
+  undoHourImport(id: string): Promise<void>;
+  inactiveMembers(): Promise<InactiveMember[]>;
+  setMemberActive(id: string, active: boolean): Promise<void>;
+  setMemberCapabilities(id: string, caps: Capability[]): Promise<void>;
 }

@@ -1,18 +1,22 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { api } from "./api";
-import type { LinkType, Member } from "./types";
+import type { LinkType, Me } from "./types";
 
 type Status = "loading" | "signed-out" | "unlinked" | "ready";
 interface SessionValue {
   status: Status;
-  me: Member | null;
+  me: Me | null;
   /** The emailed link the page was opened with had expired or was already used. */
   linkError: boolean;
+  /** Signed in from a «choose a new password» link: ask for the new password before anything else. */
+  recovery: boolean;
+  clearRecovery: () => void;
   signOut: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
+const RECOVERY_KEY = "ethmar-recovery";
 
 /** Keeps track of the signed-in account and its member record. Client-only: the session lives in the browser. */
 export function PortalSessionProvider({ children }: { children: ReactNode }) {
@@ -20,6 +24,13 @@ export function PortalSessionProvider({ children }: { children: ReactNode }) {
   const [uid, setUid] = useState<string | null | undefined>(undefined);
 
   const [linkError, setLinkError] = useState(false);
+  const [recovery, setRecovery] = useState(() => {
+    try {
+      return sessionStorage.getItem(RECOVERY_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   useEffect(() => {
     let alive = true;
     // Opened from an emailed invitation / password link: sign in with it first, then tidy the URL.
@@ -28,9 +39,20 @@ export function PortalSessionProvider({ children }: { children: ReactNode }) {
     const type = params.get("type") as LinkType | null;
     const fromLink =
       tokenHash && type && ["invite", "magiclink", "recovery"].includes(type)
-        ? api.verifyLink(tokenHash, type).catch(() => {
-            if (alive) setLinkError(true);
-          })
+        ? api
+            .verifyLink(tokenHash, type)
+            .then(() => {
+              if (type !== "recovery") return;
+              try {
+                sessionStorage.setItem(RECOVERY_KEY, "1");
+              } catch {
+                // the flag only lives for this tab
+              }
+              if (alive) setRecovery(true);
+            })
+            .catch(() => {
+              if (alive) setLinkError(true);
+            })
         : Promise.resolve();
     if (tokenHash) {
       params.delete("token_hash");
@@ -74,6 +96,15 @@ export function PortalSessionProvider({ children }: { children: ReactNode }) {
     status,
     me: meQuery.data ?? null,
     linkError,
+    recovery,
+    clearRecovery: () => {
+      try {
+        sessionStorage.removeItem(RECOVERY_KEY);
+      } catch {
+        // ignore
+      }
+      setRecovery(false);
+    },
     signOut: async () => {
       await api.signOut();
       qc.removeQueries({ queryKey: ["portal"] });
@@ -89,7 +120,7 @@ export function useSession(): SessionValue {
 }
 
 /** The signed-in member. Only call below the portal's ready state. */
-export function useMe(): Member {
+export function useMe(): Me {
   const { me } = useSession();
   if (!me) throw new Error("useMe before the session is ready");
   return me;

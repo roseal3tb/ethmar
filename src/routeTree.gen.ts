@@ -20,8 +20,15 @@ import { Route as PortalAccountsRouteImport } from './routes/portal/accounts'
 import { Route as PortalCommunityRouteImport } from './routes/portal/community'
 import { Route as PortalHoursRouteImport } from './routes/portal/hours'
 import { Route as PortalLeaderboardRouteImport } from './routes/portal/leaderboard'
+import { Route as PortalProfileRouteImport } from './routes/portal/profile'
 import { Route as PortalStatsRouteImport } from './routes/portal/stats'
 import { Route as PortalTasksRouteImport } from './routes/portal/tasks'
+import { Route as VerifyIndexRouteImport } from './routes/verify.index'
+import { Route as VerifyCodeRouteImport } from './routes/verify.$code'
+import { Route as PortalProjectsIndexRouteImport } from './routes/portal/projects.index'
+import { Route as PortalProjectsIdRouteImport } from './routes/portal/projects.$id'
+import { Route as PortalSurveysIndexRouteImport } from './routes/portal/surveys.index'
+import { Route as PortalSurveysIdRouteImport } from './routes/portal/surveys.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -78,6 +85,11 @@ const PortalLeaderboardRoute = PortalLeaderboardRouteImport.update({
   path: '/leaderboard',
   getParentRoute: () => PortalRoute,
 } as any)
+const PortalProfileRoute = PortalProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => PortalRoute,
+} as any)
 const PortalStatsRoute = PortalStatsRouteImport.update({
   id: '/stats',
   path: '/stats',
@@ -86,6 +98,36 @@ const PortalStatsRoute = PortalStatsRouteImport.update({
 const PortalTasksRoute = PortalTasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
+  getParentRoute: () => PortalRoute,
+} as any)
+const VerifyIndexRoute = VerifyIndexRouteImport.update({
+  id: '/verify/',
+  path: '/verify/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyCodeRoute = VerifyCodeRouteImport.update({
+  id: '/verify/$code',
+  path: '/verify/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalProjectsIndexRoute = PortalProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalProjectsIdRoute = PortalProjectsIdRouteImport.update({
+  id: '/projects/$id',
+  path: '/projects/$id',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalSurveysIndexRoute = PortalSurveysIndexRouteImport.update({
+  id: '/surveys/',
+  path: '/surveys/',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalSurveysIdRoute = PortalSurveysIdRouteImport.update({
+  id: '/surveys/$id',
+  path: '/surveys/$id',
   getParentRoute: () => PortalRoute,
 } as any)
 
@@ -100,9 +142,16 @@ export interface FileRoutesByFullPath {
   '/portal/community': typeof PortalCommunityRoute
   '/portal/hours': typeof PortalHoursRoute
   '/portal/leaderboard': typeof PortalLeaderboardRoute
+  '/portal/profile': typeof PortalProfileRoute
   '/portal/stats': typeof PortalStatsRoute
   '/portal/tasks': typeof PortalTasksRoute
+  '/verify/$code': typeof VerifyCodeRoute
   '/portal/': typeof PortalIndexRoute
+  '/verify/': typeof VerifyIndexRoute
+  '/portal/projects/$id': typeof PortalProjectsIdRoute
+  '/portal/surveys/$id': typeof PortalSurveysIdRoute
+  '/portal/projects/': typeof PortalProjectsIndexRoute
+  '/portal/surveys/': typeof PortalSurveysIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -114,9 +163,16 @@ export interface FileRoutesByTo {
   '/portal/community': typeof PortalCommunityRoute
   '/portal/hours': typeof PortalHoursRoute
   '/portal/leaderboard': typeof PortalLeaderboardRoute
+  '/portal/profile': typeof PortalProfileRoute
   '/portal/stats': typeof PortalStatsRoute
   '/portal/tasks': typeof PortalTasksRoute
+  '/verify/$code': typeof VerifyCodeRoute
   '/portal': typeof PortalIndexRoute
+  '/verify': typeof VerifyIndexRoute
+  '/portal/projects/$id': typeof PortalProjectsIdRoute
+  '/portal/surveys/$id': typeof PortalSurveysIdRoute
+  '/portal/projects': typeof PortalProjectsIndexRoute
+  '/portal/surveys': typeof PortalSurveysIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -130,9 +186,16 @@ export interface FileRoutesById {
   '/portal/community': typeof PortalCommunityRoute
   '/portal/hours': typeof PortalHoursRoute
   '/portal/leaderboard': typeof PortalLeaderboardRoute
+  '/portal/profile': typeof PortalProfileRoute
   '/portal/stats': typeof PortalStatsRoute
   '/portal/tasks': typeof PortalTasksRoute
+  '/verify/$code': typeof VerifyCodeRoute
   '/portal/': typeof PortalIndexRoute
+  '/verify/': typeof VerifyIndexRoute
+  '/portal/projects/$id': typeof PortalProjectsIdRoute
+  '/portal/surveys/$id': typeof PortalSurveysIdRoute
+  '/portal/projects/': typeof PortalProjectsIndexRoute
+  '/portal/surveys/': typeof PortalSurveysIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -147,9 +210,16 @@ export interface FileRouteTypes {
     | '/portal/community'
     | '/portal/hours'
     | '/portal/leaderboard'
+    | '/portal/profile'
     | '/portal/stats'
     | '/portal/tasks'
+    | '/verify/$code'
     | '/portal/'
+    | '/verify/'
+    | '/portal/projects/$id'
+    | '/portal/surveys/$id'
+    | '/portal/projects/'
+    | '/portal/surveys/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -161,9 +231,16 @@ export interface FileRouteTypes {
     | '/portal/community'
     | '/portal/hours'
     | '/portal/leaderboard'
+    | '/portal/profile'
     | '/portal/stats'
     | '/portal/tasks'
+    | '/verify/$code'
     | '/portal'
+    | '/verify'
+    | '/portal/projects/$id'
+    | '/portal/surveys/$id'
+    | '/portal/projects'
+    | '/portal/surveys'
   id:
     | '__root__'
     | '/'
@@ -176,9 +253,16 @@ export interface FileRouteTypes {
     | '/portal/community'
     | '/portal/hours'
     | '/portal/leaderboard'
+    | '/portal/profile'
     | '/portal/stats'
     | '/portal/tasks'
+    | '/verify/$code'
     | '/portal/'
+    | '/verify/'
+    | '/portal/projects/$id'
+    | '/portal/surveys/$id'
+    | '/portal/projects/'
+    | '/portal/surveys/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -188,6 +272,8 @@ export interface RootRouteChildren {
   PortalRoute: typeof PortalRouteWithChildren
   ProjectsRoute: typeof ProjectsRoute
   StructureRoute: typeof StructureRoute
+  VerifyCodeRoute: typeof VerifyCodeRoute
+  VerifyIndexRoute: typeof VerifyIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -269,6 +355,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalLeaderboardRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/portal/profile': {
+      id: '/portal/profile'
+      path: '/profile'
+      fullPath: '/portal/profile'
+      preLoaderRoute: typeof PortalProfileRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/portal/stats': {
       id: '/portal/stats'
       path: '/stats'
@@ -283,6 +376,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalTasksRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/verify/': {
+      id: '/verify/'
+      path: '/verify'
+      fullPath: '/verify/'
+      preLoaderRoute: typeof VerifyIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify/$code': {
+      id: '/verify/$code'
+      path: '/verify/$code'
+      fullPath: '/verify/$code'
+      preLoaderRoute: typeof VerifyCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal/projects/': {
+      id: '/portal/projects/'
+      path: '/projects'
+      fullPath: '/portal/projects/'
+      preLoaderRoute: typeof PortalProjectsIndexRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/projects/$id': {
+      id: '/portal/projects/$id'
+      path: '/projects/$id'
+      fullPath: '/portal/projects/$id'
+      preLoaderRoute: typeof PortalProjectsIdRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/surveys/': {
+      id: '/portal/surveys/'
+      path: '/surveys'
+      fullPath: '/portal/surveys/'
+      preLoaderRoute: typeof PortalSurveysIndexRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/surveys/$id': {
+      id: '/portal/surveys/$id'
+      path: '/surveys/$id'
+      fullPath: '/portal/surveys/$id'
+      preLoaderRoute: typeof PortalSurveysIdRouteImport
+      parentRoute: typeof PortalRoute
+    }
   }
 }
 
@@ -291,9 +426,14 @@ interface PortalRouteChildren {
   PortalCommunityRoute: typeof PortalCommunityRoute
   PortalHoursRoute: typeof PortalHoursRoute
   PortalLeaderboardRoute: typeof PortalLeaderboardRoute
+  PortalProfileRoute: typeof PortalProfileRoute
   PortalStatsRoute: typeof PortalStatsRoute
   PortalTasksRoute: typeof PortalTasksRoute
   PortalIndexRoute: typeof PortalIndexRoute
+  PortalProjectsIdRoute: typeof PortalProjectsIdRoute
+  PortalSurveysIdRoute: typeof PortalSurveysIdRoute
+  PortalProjectsIndexRoute: typeof PortalProjectsIndexRoute
+  PortalSurveysIndexRoute: typeof PortalSurveysIndexRoute
 }
 
 const PortalRouteChildren: PortalRouteChildren = {
@@ -301,9 +441,14 @@ const PortalRouteChildren: PortalRouteChildren = {
   PortalCommunityRoute: PortalCommunityRoute,
   PortalHoursRoute: PortalHoursRoute,
   PortalLeaderboardRoute: PortalLeaderboardRoute,
+  PortalProfileRoute: PortalProfileRoute,
   PortalStatsRoute: PortalStatsRoute,
   PortalTasksRoute: PortalTasksRoute,
   PortalIndexRoute: PortalIndexRoute,
+  PortalProjectsIdRoute: PortalProjectsIdRoute,
+  PortalSurveysIdRoute: PortalSurveysIdRoute,
+  PortalProjectsIndexRoute: PortalProjectsIndexRoute,
+  PortalSurveysIndexRoute: PortalSurveysIndexRoute,
 }
 
 const PortalRouteWithChildren =
@@ -316,6 +461,8 @@ const rootRouteChildren: RootRouteChildren = {
   PortalRoute: PortalRouteWithChildren,
   ProjectsRoute: ProjectsRoute,
   StructureRoute: StructureRoute,
+  VerifyCodeRoute: VerifyCodeRoute,
+  VerifyIndexRoute: VerifyIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

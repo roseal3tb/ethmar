@@ -20,6 +20,7 @@ import {
   useTasks,
 } from "@/lib/portal/queries";
 import { useMe } from "@/lib/portal/session";
+import { MedalStrip } from "./Achievements";
 import type { Task } from "@/lib/portal/types";
 import {
   Avatar,
@@ -154,6 +155,8 @@ export function HomePage() {
               </div>
             </div>
           </section>
+
+          <MedalStrip />
 
           {sem && (
             <Panel className="space-y-3">

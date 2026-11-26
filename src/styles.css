@@ -648,3 +648,51 @@ body:has(.site-dark) {
     transform: translateY(-1px);
   }
 }
+
+/* Endless portal ornaments run in CSS: endless framer-motion animations block page exit transitions. */
+@keyframes p-glow {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+@keyframes p-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+@keyframes p-hourglass {
+  0% {
+    transform: rotate(0);
+  }
+  20%,
+  80% {
+    transform: rotate(180deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.p-glow {
+  animation: p-glow 3.2s ease-in-out infinite both;
+}
+.p-bob {
+  animation: p-bob 2.4s ease-in-out infinite;
+}
+.p-hourglass {
+  animation: p-hourglass 4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .p-glow,
+  .p-bob,
+  .p-hourglass {
+    animation: none;
+  }
+}

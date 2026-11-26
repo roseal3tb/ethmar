@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ChevronDown, Crown, Search, Users } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { COMMITTEE_HEADS, LEADERSHIP, TEAM_HEADS } from "@/lib/portal/permissions";
-import { useDirectory, useMemberTiers, type Directory } from "@/lib/portal/queries";
+import { useDirectory, useMemberTiers, useTasks, type Directory } from "@/lib/portal/queries";
 import { useMe } from "@/lib/portal/session";
 import type { Committee, Member } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
@@ -334,7 +334,17 @@ function CommitteeView({
   onBack: () => void;
 }) {
   const tiers = useMemberTiers();
+  const tasks = useTasks();
+  const [q, setQ] = useState("");
   const members = dir.membersOf(c.id);
+  const openTasks = (tasks.data ?? []).filter(
+    (t) => t.committee_id === c.id && t.status === "active",
+  ).length;
+  const found = q.trim()
+    ? members.filter(
+        (m) => m.full_name.includes(q.trim()) || (m.member_code ?? "").includes(q.trim()),
+      )
+    : null;
   const heads = leadOf(dir, c);
   const teams = dir.teamsOf(c.id);
   const projectLeads = members.filter((m) => m.role === "project_lead");
@@ -379,94 +389,138 @@ function CommitteeView({
           <span className="mb-3 block h-1 w-12 rounded-full" style={{ background: c.accent }} />
           <h1 className="font-display text-2xl font-extrabold sm:text-3xl">{c.title}</h1>
           {c.description && <p className="mt-2 max-w-xl text-[var(--p-soft)]">{c.description}</p>}
-          <p className="mt-3 text-sm text-[var(--p-dim)]">
-            {members.length} عضو{teams.length ? ` · ${teams.length} فرق` : ""}
-          </p>
+          <dl className="mt-5 flex flex-wrap gap-2">
+            {[
+              { k: "عضو", v: members.length },
+              ...(teams.length
+                ? [{ k: teams.length > 2 && teams.length < 11 ? "فرق" : "فريق", v: teams.length }]
+                : []),
+              { k: "مهمة مفتوحة", v: openTasks },
+            ].map((x, i) => (
+              <motion.div
+                key={x.k}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + i * 0.07 }}
+                className="rounded-2xl border border-[var(--p-line)] bg-[rgb(3_31_25/0.35)] px-4 py-2"
+              >
+                <dd className="font-display text-xl font-extrabold" style={{ color: c.accent }}>
+                  {x.v}
+                </dd>
+                <dt className="text-[11px] text-[var(--p-dim)]">{x.k}</dt>
+              </motion.div>
+            ))}
+          </dl>
         </div>
       </section>
 
-      <Block title="قيادة اللجنة">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {heads.map((m) => (
-            <div
-              key={m.id}
-              id={`m-${m.id}`}
-              className={cn(
-                "p-card flex items-center gap-3 p-4",
-                m.id === focus && "ring-2 ring-[var(--p-gold)]",
-              )}
-            >
-              <Avatar
-                name={m.full_name}
-                size={46}
-                ring={m.role === "committee_lead" ? c.accent : undefined}
-              />
-              <span className="min-w-0 flex-1">
-                <b className="block truncate">{m.full_name}</b>
-                <span className="text-xs text-[var(--p-gold-soft)]">{titleOf(m)}</span>
-              </span>
-              {tiers.data?.[m.id] && (
-                <TierGem tierId={tiers.data[m.id]!.tier_id} className="size-4" />
-              )}
-            </div>
-          ))}
-        </div>
-      </Block>
+      <label className="relative block max-w-md">
+        <Search className="pointer-events-none absolute top-1/2 start-3.5 size-4 -translate-y-1/2 text-[var(--p-dim)]" />
+        <input
+          className="p-input ps-10"
+          placeholder={`ابحث في ${c.name}`}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </label>
 
-      {projectLeads.length > 0 && (
-        <Block title="قادة المشاريع">
-          <div className="flex flex-wrap gap-2">{projectLeads.map(person)}</div>
+      {found ? (
+        <Block title="نتائج البحث" hint={`${found.length} عضو`}>
+          {found.length ? (
+            <div className="p-card flex flex-wrap gap-2 p-4 sm:p-5">{found.map(person)}</div>
+          ) : (
+            <p className="p-well px-4 py-6 text-center text-sm text-[var(--p-dim)]">ما لقينا أحد</p>
+          )}
         </Block>
-      )}
-
-      {teams.map((t) => {
-        const tm = members.filter((m) => m.team_id === t.id);
-        const tHeads = tm.filter((m) => TEAM_HEADS.includes(m.role));
-        const rest = tm.filter((m) => !TEAM_HEADS.includes(m.role));
-        return (
-          <Block key={t.id} title={t.name} hint={`${tm.length} عضو`}>
-            <div className="p-card p-4 sm:p-5">
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold text-[var(--p-dim)]">{t.head_title}:</span>
-                {tHeads.map((h) => (
-                  <span
-                    key={h.id}
-                    id={`m-${h.id}`}
-                    className={cn(
-                      "p-chip-hover flex items-center gap-2 rounded-full border border-transparent bg-[rgb(198_164_92/0.1)] py-1 pe-3 ps-1",
-                      h.id === focus && "ring-2 ring-[var(--p-gold)]",
-                    )}
-                  >
-                    <Avatar name={h.full_name} size={26} />
-                    <b className="text-sm">{h.full_name}</b>
-                    <span className="text-[11px] text-[var(--p-gold-soft)]">{titleOf(h)}</span>
+      ) : (
+        <>
+          <Block title="قيادة اللجنة">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {heads.map((m) => (
+                <div
+                  key={m.id}
+                  id={`m-${m.id}`}
+                  className={cn(
+                    "p-card flex items-center gap-3 p-4",
+                    m.id === focus && "ring-2 ring-[var(--p-gold)]",
+                  )}
+                >
+                  <Avatar
+                    name={m.full_name}
+                    size={46}
+                    ring={m.role === "committee_lead" ? c.accent : undefined}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate">{m.full_name}</b>
+                    <span className="text-xs text-[var(--p-gold-soft)]">{titleOf(m)}</span>
                   </span>
-                ))}
-              </div>
+                  {tiers.data?.[m.id] && (
+                    <TierGem tierId={tiers.data[m.id]!.tier_id} className="size-4" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </Block>
+
+          {projectLeads.length > 0 && (
+            <Block title="قادة المشاريع">
+              <div className="flex flex-wrap gap-2">{projectLeads.map(person)}</div>
+            </Block>
+          )}
+
+          {teams.map((t) => {
+            const tm = members.filter((m) => m.team_id === t.id);
+            const tHeads = tm.filter((m) => TEAM_HEADS.includes(m.role));
+            const rest = tm.filter((m) => !TEAM_HEADS.includes(m.role));
+            return (
+              <Block key={t.id} title={t.name} hint={`${tm.length} عضو`}>
+                <div className="p-card p-4 sm:p-5">
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-[var(--p-dim)]">{t.head_title}:</span>
+                    {tHeads.map((h) => (
+                      <span
+                        key={h.id}
+                        id={`m-${h.id}`}
+                        className={cn(
+                          "p-chip-hover flex items-center gap-2 rounded-full border border-transparent bg-[rgb(198_164_92/0.1)] py-1 pe-3 ps-1",
+                          h.id === focus && "ring-2 ring-[var(--p-gold)]",
+                        )}
+                      >
+                        <Avatar name={h.full_name} size={26} />
+                        <b className="text-sm">{h.full_name}</b>
+                        <span className="text-[11px] text-[var(--p-gold-soft)]">{titleOf(h)}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <motion.div
+                    variants={listVariants}
+                    initial="hidden"
+                    animate="show"
+                    className="flex flex-wrap gap-2"
+                  >
+                    {rest.map(person)}
+                  </motion.div>
+                </div>
+              </Block>
+            );
+          })}
+
+          {loose.length > 0 && (
+            <Block
+              title={teams.length ? "أعضاء بدون فريق" : "الأعضاء"}
+              hint={`${loose.length} عضو`}
+            >
               <motion.div
                 variants={listVariants}
                 initial="hidden"
                 animate="show"
-                className="flex flex-wrap gap-2"
+                className="p-card flex flex-wrap gap-2 p-4 sm:p-5"
               >
-                {rest.map(person)}
+                {loose.map(person)}
               </motion.div>
-            </div>
-          </Block>
-        );
-      })}
-
-      {loose.length > 0 && (
-        <Block title={teams.length ? "أعضاء بدون فريق" : "الأعضاء"} hint={`${loose.length} عضو`}>
-          <motion.div
-            variants={listVariants}
-            initial="hidden"
-            animate="show"
-            className="p-card flex flex-wrap gap-2 p-4 sm:p-5"
-          >
-            {loose.map(person)}
-          </motion.div>
-        </Block>
+            </Block>
+          )}
+        </>
       )}
     </div>
   );

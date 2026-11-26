@@ -23,6 +23,7 @@ const AUDIENCE: Record<string, string> = {
   team: "لفريقك",
   people: "لك بالاسم",
   leaders: "لقادة اللجان",
+  project: "لفريق المشروع",
 };
 
 Deno.serve(async (req) => {
@@ -45,7 +46,7 @@ Deno.serve(async (req) => {
   const { data: task } = await caller
     .from("tasks")
     .select(
-      "id, title, description, audience, mode, hours, seats, due_date, created_by, committee_id, team_id",
+      "id, title, description, audience, mode, hours, seats, due_date, created_by, committee_id, team_id, project_id",
     )
     .eq("id", taskId)
     .maybeSingle();
@@ -68,6 +69,7 @@ Deno.serve(async (req) => {
     { data: creator },
     { data: committee },
     { data: team },
+    { data: project },
   ] = await Promise.all([
     admin.from("member_emails").select("member_id, email").in("member_id", ids),
     admin.from("members").select("id, full_name, user_id").in("id", ids),
@@ -77,6 +79,9 @@ Deno.serve(async (req) => {
       : Promise.resolve({ data: null }),
     task.team_id
       ? admin.from("teams").select("name").eq("id", task.team_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    task.project_id
+      ? admin.from("projects").select("name").eq("id", task.project_id).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   const nameOf = new Map((people ?? []).map((p) => [p.id, String(p.full_name)]));
@@ -100,9 +105,11 @@ Deno.serve(async (req) => {
     const where =
       task.audience === "leaders"
         ? "من قيادة المبادرة"
-        : committee?.title
-          ? `من ${committee.title}`
-          : "";
+        : project?.name
+          ? `من مشروع ${project.name}`
+          : committee?.title
+            ? `من ${committee.title}`
+            : "";
     const tiles = [
       {
         value: String(hours),
@@ -122,7 +129,7 @@ Deno.serve(async (req) => {
       heading: String(task.title),
       intro: assigned
         ? `أسند لك ${from} هذي المهمة، وتنحسب ساعاتها أول ما ينعتمد تسليمك`
-        : `نزّل ${from} مهمة جديدة ${task.audience === "team" ? "لفريقك" : task.audience === "leaders" ? "لقادة اللجان" : "للجنة"}، وتقدر تسحبها الحين`,
+        : `نزّل ${from} مهمة جديدة ${task.audience === "team" ? "لفريقك" : task.audience === "leaders" ? "لقادة اللجان" : task.audience === "project" ? "لفريق المشروع" : "للجنة"}، وتقدر تسحبها الحين`,
       blocks: [
         chips([
           task.audience === "team" && team?.name

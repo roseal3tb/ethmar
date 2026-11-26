@@ -21,6 +21,7 @@ export function audienceLabel(t: Task, dir: Directory | null): string {
     return c && dir!.teamsOf(c.id).length ? "جماعية · كل الفرق" : "للجنة كاملة";
   }
   if (t.audience === "team") return dir?.team(t.team_id)?.name ?? "فريق";
+  if (t.audience === "project") return "لفريق المشروع";
   return "مسندة لأشخاص";
 }
 
