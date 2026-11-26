@@ -43,6 +43,7 @@ import {
   hoursLabel,
   seatsLabel,
 } from "./ui";
+import { PSelect } from "./PSelect";
 
 export function TasksPage({
   taskId,
@@ -154,20 +155,17 @@ export function TasksPage({
             />
           )}
           {isLeadership(me) && (
-            <select
-              className="p-input h-10 min-h-10 w-auto py-1 text-sm"
+            <PSelect
+              size="sm"
+              label="تصفية حسب اللجنة"
               value={committeeFilter}
-              onChange={(e) => setCommitteeFilter(e.target.value)}
-              aria-label="تصفية حسب اللجنة"
-            >
-              <option value="all">كل اللجان</option>
-              <option value="leaders">مهام القادة</option>
-              {dir.committees.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.title}
-                </option>
-              ))}
-            </select>
+              onChange={setCommitteeFilter}
+              options={[
+                { value: "all", label: "كل اللجان" },
+                { value: "leaders", label: "مهام القادة" },
+                ...dir.committees.map((c) => ({ value: c.id, label: c.title, group: "اللجان" })),
+              ]}
+            />
           )}
         </div>
       </div>

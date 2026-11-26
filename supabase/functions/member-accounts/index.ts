@@ -4,10 +4,11 @@
 //   (email from the request, or the one already on file) and emails them an invitation link.
 //   Opening the link signs them in and the portal asks them to choose their password.
 // POST { action: "reset", member_id }          → emails a link to choose a new password.
+// Allowed for whoever `can_manage_account(member)` says: leadership for everyone, committee heads
+// for their committee, team heads for their team's members.
 //
 // If SMTP isn't configured yet the link is returned instead (`emailed: false`), so the
-// leadership can send it themselves. The caller's own token decides who they are;
-// `is_leadership()` (president, vice presidents, admins) decides whether they may do this.
+// leaders can send it themselves. The caller's own token decides who they are.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   cors,
@@ -31,9 +32,6 @@ Deno.serve(async (req) => {
   const caller = createClient(url, anonKey, {
     global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
   });
-  const { data: allowed, error: roleError } = await caller.rpc("is_leadership");
-  if (roleError || allowed !== true) return json({ error: "forbidden" }, 403);
-
   let body: { action?: string; member_id?: string; email?: string };
   try {
     body = await req.json();
@@ -42,6 +40,10 @@ Deno.serve(async (req) => {
   }
   const memberId = String(body.member_id ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(memberId)) return json({ error: "invalid_member" }, 400);
+
+  // Leadership → anyone; committee heads → their committee; team heads → their team's members.
+  const { data: allowed, error: roleError } = await caller.rpc("can_manage_account", { p_member: memberId });
+  if (roleError || allowed !== true) return json({ error: "forbidden" }, 403);
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
   const { data: member } = await admin
@@ -76,11 +78,15 @@ Deno.serve(async (req) => {
   if (body.action === "invite") {
     const email = String(body.email || onFile?.email || "").trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ error: "invalid_email" }, 400);
-
-    const { error: emailError } = await admin
+    // An existing login keeps its address; changing it here would split the member from their account.
+    if (member.user_id && onFile?.email && onFile.email !== email) return json({ error: "email_locked" }, 409);
+    const { data: taken } = await admin
       .from("member_emails")
-      .upsert({ member_id: memberId, email }, { onConflict: "member_id" });
-    if (emailError) return json({ error: "email_in_use" }, 409);
+      .select("member_id")
+      .eq("email", email)
+      .neq("member_id", memberId)
+      .maybeSingle();
+    if (taken) return json({ error: "email_in_use" }, 409);
 
     // A member who already has a login (e.g. a lost invitation) gets a fresh sign-in link instead.
     let type: "invite" | "magiclink" = member.user_id ? "magiclink" : "invite";
@@ -91,6 +97,10 @@ Deno.serve(async (req) => {
       ({ data: link, error } = await admin.auth.admin.generateLink({ type, email }));
     }
     if (error || !link?.user) return json({ error: "email_in_use" }, 409);
+    const { error: emailError } = await admin
+      .from("member_emails")
+      .upsert({ member_id: memberId, email }, { onConflict: "member_id" });
+    if (emailError) return json({ error: "email_in_use" }, 409);
     // Someone who already chose a password just gets signed in; only new or pending members choose one.
     // A login that was never confirmed or never used may carry a password nobody here set
     // (e.g. a sign-up made with this address): the member must replace it.

@@ -68,6 +68,22 @@ export function canClaim(me: Member | null, task: Task, today: string): boolean 
   return false;
 }
 
+/** May open the accounts page (invite people / send password links). */
+export function canManageAccounts(m: Member | null): boolean {
+  return isLeadership(m) || isCommitteeHead(m) || isTeamHead(m);
+}
+
+/** Mirror of SQL `can_manage_account`: leadership → all; committee heads → their committee;
+ *  team heads → plain members of their team. */
+export function canManageAccount(me: Member | null, t: Member): boolean {
+  if (!me) return false;
+  if (isLeadership(me)) return true;
+  if (isCommitteeHead(me))
+    return t.committee_id === me.committee_id && !LEADERSHIP.includes(t.role) && !t.is_admin;
+  if (isTeamHead(me)) return !!me.team_id && t.team_id === me.team_id && t.role === "member";
+  return false;
+}
+
 /** Hours privacy: who may see another member's numbers. */
 export function canViewHoursOf(me: Member | null, other: Member): boolean {
   if (!me) return false;

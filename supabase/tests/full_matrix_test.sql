@@ -304,5 +304,14 @@ begin
     r := r || pg_temp.chk('المنسحبة ما تقرأ الإيميلات', pg_temp.q(mariam, 'select count(*) from member_emails'), '0');
   end if;
 
+  r := r || E'\n— J. الدعوات وكلمات المرور';
+  r := r || pg_temp.chk('قائد لجنة يدعو عضو من لجنته', pg_temp.q(waleed, format('select can_manage_account(%L)', m_mona)), 'true');
+  r := r || pg_temp.chk('قائد لجنة ما يدعو لجنة ثانية', pg_temp.q(waleed, format('select can_manage_account(%L)', m_faris)), 'false');
+  r := r || pg_temp.chk('قائد فريق يدعو عضو فريقه', pg_temp.q(fahd, format('select can_manage_account(%L)', m_mona)), 'true');
+  r := r || pg_temp.chk('قائد فريق ما يدعو الفريق الثاني', pg_temp.q(fahd, format('select can_manage_account(%L)', m_yazeed)), 'false');
+  r := r || pg_temp.chk('عضو ما يدعو أحد', pg_temp.q(mona, format('select can_manage_account(%L)', m_yazeed)), 'false');
+  r := r || pg_temp.chk('الأدمن تدعو أي أحد', pg_temp.q(rose, format('select can_manage_account(%L)', m_faris)), 'true');
+  r := r || pg_temp.chk('قائد اللجنة يشوف إيميلات لجنته بس', pg_temp.q(waleed, $q$select count(*) filter (where m.committee_id <> 'pr') from member_emails e join members m on m.id = e.member_id$q$), '0');
+
   raise exception 'REPORT (rolled back):%', r;
 end $$;

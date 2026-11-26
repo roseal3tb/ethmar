@@ -26,6 +26,7 @@ import { useMe } from "@/lib/portal/session";
 import type { Audience, TaskMode } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 import { Avatar, titleOf } from "./ui";
+import { PSelect } from "./PSelect";
 
 export function CreateTaskButton({ onCreated }: { onCreated?: (id: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -178,26 +179,20 @@ function CreateTaskForm({ onDone }: { onDone: (id: string) => void }) {
       </DialogHeader>
 
       {me.is_admin && audience !== "leaders" && (
-        <label className="block space-y-2">
-          <span className="text-sm font-bold text-[var(--p-soft)]">اللجنة</span>
-          <select
-            className="p-input"
+        <div className="space-y-2">
+          <span className="block text-sm font-bold text-[var(--p-soft)]">اللجنة</span>
+          <PSelect
+            label="اللجنة"
             value={committeeId}
-            onChange={(e) => {
-              setCommitteeId(e.target.value);
-              setTeamId(dir?.teamsOf(e.target.value)[0]?.id ?? "");
+            onChange={(v) => {
+              setCommitteeId(v);
+              setTeamId(dir?.teamsOf(v)[0]?.id ?? "");
               setTargets([]);
-              if (audience === "team" && !dir?.teamsOf(e.target.value).length)
-                setAudience("committee");
+              if (audience === "team" && !dir?.teamsOf(v).length) setAudience("committee");
             }}
-          >
-            {committees.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={committees.map((c) => ({ value: c.id, label: c.title }))}
+          />
+        </div>
       )}
 
       <fieldset className="space-y-2">

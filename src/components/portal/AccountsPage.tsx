@@ -24,6 +24,9 @@ import { errorMessage } from "@/lib/portal/errors";
 import { useAccountActions, useDirectory, useMemberEmails } from "@/lib/portal/queries";
 import type { InviteResult, Member } from "@/lib/portal/types";
 import { useQueryClient } from "@tanstack/react-query";
+import { canManageAccount, isCommitteeHead, isLeadership } from "@/lib/portal/permissions";
+import { useMe } from "@/lib/portal/session";
+import { PSelect } from "./PSelect";
 import { Avatar, Chip, ErrorState, PageHeader, PageSkeleton, Segmented, titleOf } from "./ui";
 
 type Filter = "all" | "with" | "without";
@@ -33,6 +36,8 @@ const isActive = (m: Member) => m.has_account && !m.must_change_password;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function AccountsPage() {
+  const me = useMe();
+  const leadership = isLeadership(me);
   const { dir, isError, refetch } = useDirectory();
   const emails = useMemberEmails(true);
   const [filter, setFilter] = useState<Filter>("all");
@@ -41,11 +46,27 @@ export function AccountsPage() {
   const [action, setAction] = useState<Action>(null);
   const [bulkOpen, setBulkOpen] = useState<false | "invite" | "remind">(false);
 
+  // Leadership sees everyone; a committee head their committee; a team head their team's members.
+  const scope = useMemo(
+    () => (dir?.members ?? []).filter((m) => canManageAccount(me, m)),
+    [dir, me],
+  );
+  const myTeams = dir && me.committee_id && !leadership ? dir.teamsOf(me.committee_id) : [];
+  const showTeamFilter = isCommitteeHead(me) && !leadership && myTeams.length > 0;
+
   const rows = useMemo(() => {
-    let r = dir?.members ?? [];
+    let r = scope;
     if (filter !== "all") r = r.filter((m) => (filter === "with" ? isActive(m) : !isActive(m)));
     if (committee !== "all")
-      r = r.filter((m) => (committee === "lead" ? !m.committee_id : m.committee_id === committee));
+      r = r.filter((m) =>
+        committee === "lead"
+          ? !m.committee_id
+          : committee === "none"
+            ? !m.team_id
+            : committee.startsWith("team:")
+              ? m.team_id === committee.slice(5)
+              : m.committee_id === committee,
+      );
     if (q.trim())
       r = r.filter(
         (m) =>
@@ -53,22 +74,31 @@ export function AccountsPage() {
           (emails.data?.[m.id] ?? "").includes(q.trim().toLowerCase()),
       );
     return r;
-  }, [dir, filter, committee, q, emails.data]);
+  }, [scope, filter, committee, q, emails.data]);
 
   if (isError) return <ErrorState onRetry={() => refetch()} />;
   if (!dir) return <PageSkeleton />;
-  const withCount = dir.members.filter(isActive).length;
+  const withCount = scope.filter(isActive).length;
   // New invitations go only to people who never got one; a second email would cancel the first link.
-  const ready = dir.members.filter((m) => !m.has_account && emails.data?.[m.id]);
-  const pending = dir.members.filter((m) => m.has_account && !isActive(m) && emails.data?.[m.id]);
-  const noEmail = dir.members.filter((m) => !isActive(m) && !emails.data?.[m.id]).length;
+  const ready = scope.filter((m) => !m.has_account && emails.data?.[m.id]);
+  const pending = scope.filter((m) => m.has_account && !isActive(m) && emails.data?.[m.id]);
+  const noEmail = scope.filter((m) => !isActive(m) && !emails.data?.[m.id]).length;
+  const whose = leadership
+    ? null
+    : isCommitteeHead(me)
+      ? (dir.committee(me.committee_id)?.title ?? "لجنتك")
+      : (dir.team(me.team_id)?.name ?? "فريقك");
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         icon={UserCog}
         title="حسابات الأعضاء"
-        subtitle={`${withCount} من ${dir.members.length} فعّلوا حساباتهم`}
+        subtitle={
+          whose
+            ? `${whose} · ${withCount} من ${scope.length} فعّلوا حساباتهم`
+            : `${withCount} من ${scope.length} فعّلوا حساباتهم`
+        }
         actions={
           ready.length > 0 || pending.length > 0 ? (
             <div className="flex flex-wrap gap-2">
@@ -96,12 +126,13 @@ export function AccountsPage() {
         <MailCheck className="mt-1 size-4 shrink-0 text-[var(--p-ok)]" />
         <p>
           كل عضو يوصله إيميل دعوة فيه رابط، يفتحه ويختار كلمة المرور بنفسه. لو الرابط انتهى أو ضاع،
-          أرسلي له دعوة جديدة.
+          أرسل له دعوة جديدة.
+          {whose && <> هنا تشوف أعضاء {whose} اللي تقدر تدعوهم بس.</>}
           {noEmail > 0 && (
             <>
               {" "}
-              فيه <b className="text-[var(--p-text)]">{noEmail}</b> بدون إيميل مسجّل، تقدرين تكتبينه
-              لهم وقت الدعوة.
+              فيه <b className="text-[var(--p-text)]">{noEmail}</b> بدون إيميل مسجّل، تقدر تكتب
+              إيميلاتهم وقت الدعوة.
             </>
           )}
         </p>
@@ -117,23 +148,35 @@ export function AccountsPage() {
             options={[
               { value: "all", label: "الكل" },
               { value: "with", label: "مفعّلين" },
-              { value: "without", label: "لم يفعّلوا", count: dir.members.length - withCount },
+              { value: "without", label: "لم يفعّلوا", count: scope.length - withCount },
             ]}
           />
-          <select
-            className="p-input h-10 min-h-10 w-auto py-1 text-sm"
-            value={committee}
-            onChange={(e) => setCommittee(e.target.value)}
-            aria-label="اللجنة"
-          >
-            <option value="all">كل اللجان</option>
-            <option value="lead">قيادة المبادرة</option>
-            {dir.committees.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
+          {leadership && (
+            <PSelect
+              size="sm"
+              label="اللجنة"
+              value={committee}
+              onChange={setCommittee}
+              options={[
+                { value: "all", label: "كل اللجان" },
+                { value: "lead", label: "قيادة المبادرة" },
+                ...dir.committees.map((c) => ({ value: c.id, label: c.title, group: "اللجان" })),
+              ]}
+            />
+          )}
+          {showTeamFilter && (
+            <PSelect
+              size="sm"
+              label="الفريق"
+              value={committee}
+              onChange={setCommittee}
+              options={[
+                { value: "all", label: "كل الفرق" },
+                ...myTeams.map((t) => ({ value: `team:${t.id}`, label: t.name, group: "الفرق" })),
+                { value: "none", label: "بدون فريق", group: "أخرى" },
+              ]}
+            />
+          )}
           <label className="relative ms-auto w-full sm:w-64">
             <Search className="pointer-events-none absolute top-1/2 start-3.5 size-4 -translate-y-1/2 text-[var(--p-dim)]" />
             <input
@@ -260,7 +303,7 @@ function LinkResult({
       <DialogHeader className="text-start sm:text-start">
         <DialogTitle className="font-display text-xl">الرابط جاهز</DialogTitle>
         <DialogDescription className="text-[var(--p-soft)]">
-          إرسال الإيميلات ما تفعّل بعد، فانسخي الرابط وأرسليه لـ {name} بنفسك. يشتغل مرة وحدة.
+          إرسال الإيميلات ما تفعّل بعد، فانسخ الرابط وأرسله لـ {name} بنفسك. يشتغل مرة وحدة.
         </DialogDescription>
       </DialogHeader>
       <p className="p-well break-all p-3 text-xs text-[var(--p-soft)]" dir="ltr">
@@ -275,7 +318,7 @@ function LinkResult({
               await navigator.clipboard.writeText(res.link ?? "");
               setCopied(true);
             } catch {
-              toast.error("ما قدرنا ننسخ، انسخيه يدويًا");
+              toast.error("ما قدرنا ننسخ، انسخه يدويًا");
             }
           }}
         >
@@ -304,6 +347,7 @@ function AccountDialog({
   const [res, setRes] = useState<InviteResult | null>(null);
   const busy = invite.isPending || reset.isPending;
   const emailOk = EMAIL.test(email.trim());
+  const locked = action.member.has_account && !!initialEmail;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -339,14 +383,20 @@ function AccountDialog({
         <label className="block space-y-2">
           <span className="text-sm font-bold text-[var(--p-soft)]">البريد الإلكتروني</span>
           <input
-            className="p-input"
+            className="p-input read-only:opacity-70"
             type="email"
             dir="ltr"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@example.com"
-            autoFocus
+            readOnly={locked}
+            autoFocus={!locked}
           />
+          {locked && (
+            <span className="block text-xs leading-6 text-[var(--p-dim)]">
+              عنده حساب على هذا الإيميل، فالدعوة تروح له نفسه.
+            </span>
+          )}
         </label>
       )}
       <div className="flex gap-2">
@@ -435,7 +485,7 @@ function BulkInvite({
       )}
       {state === "done" && links.length > 0 && (
         <p className="rounded-xl bg-[rgb(232_194_122/0.1)] p-3 text-sm text-[var(--p-warn)]">
-          وقّفنا بعد أول عضو لأن إرسال الإيميلات ما تفعّل بعد. فعّليه وارجعي اضغطي «دعوة الكل».
+          وقّفنا بعد أول عضو لأن إرسال الإيميلات ما تفعّل بعد. فعّله وارجع اضغط «دعوة الكل».
         </p>
       )}
       {state === "done" && failed.length > 0 && (

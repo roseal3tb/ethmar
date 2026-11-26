@@ -21,6 +21,7 @@ import {
   fmt,
   titleOf,
 } from "./ui";
+import { PSelect } from "./PSelect";
 
 type Period = "month" | "semester";
 type Tab = "members" | "leaders";
@@ -227,38 +228,32 @@ export function StatsPage() {
             />
           )}
           {leadership && (
-            <select
-              className="p-input h-10 min-h-10 w-auto py-1 text-sm"
+            <PSelect
+              size="sm"
+              label="اللجنة"
               value={committee}
-              onChange={(e) => {
-                setCommittee(e.target.value);
+              onChange={(v) => {
+                setCommittee(v);
                 setTeam("all");
               }}
-              aria-label="اللجنة"
-            >
-              <option value="all">كل اللجان</option>
-              {dir.committees.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.title}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: "all", label: "كل اللجان" },
+                ...dir.committees.map((c) => ({ value: c.id, label: c.title, group: "اللجان" })),
+              ]}
+            />
           )}
           {committeeTeams.length > 0 && (
-            <select
-              className="p-input h-10 min-h-10 w-auto py-1 text-sm"
+            <PSelect
+              size="sm"
+              label="الفريق"
               value={team}
-              onChange={(e) => setTeam(e.target.value)}
-              aria-label="الفريق"
-            >
-              <option value="all">كل الفرق</option>
-              {committeeTeams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-              <option value="none">بدون فريق</option>
-            </select>
+              onChange={setTeam}
+              options={[
+                { value: "all", label: "كل الفرق" },
+                ...committeeTeams.map((t) => ({ value: t.id, label: t.name, group: "الفرق" })),
+                { value: "none", label: "بدون فريق", group: "أخرى" },
+              ]}
+            />
           )}
           <label className="relative ms-auto w-full sm:w-56">
             <Search className="pointer-events-none absolute top-1/2 start-3.5 size-4 -translate-y-1/2 text-[var(--p-dim)]" />

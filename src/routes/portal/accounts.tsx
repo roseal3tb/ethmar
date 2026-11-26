@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AccountsPage } from "@/components/portal/AccountsPage";
 import { NoAccess } from "@/components/portal/NoAccess";
-import { isLeadership } from "@/lib/portal/permissions";
+import { canManageAccounts } from "@/lib/portal/permissions";
 import { useMe } from "@/lib/portal/session";
 
 export const Route = createFileRoute("/portal/accounts")({
@@ -11,5 +11,5 @@ export const Route = createFileRoute("/portal/accounts")({
 
 function AccountsRoute() {
   const me = useMe();
-  return isLeadership(me) ? <AccountsPage /> : <NoAccess />;
+  return canManageAccounts(me) ? <AccountsPage /> : <NoAccess />;
 }

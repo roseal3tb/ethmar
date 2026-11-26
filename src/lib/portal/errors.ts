@@ -30,6 +30,7 @@ const MESSAGES: Record<string, string> = {
   invalid_seats: "عدد المقاعد غير صحيح",
   invalid_email: "البريد الإلكتروني غير صحيح",
   email_in_use: "البريد مستخدم لحساب آخر",
+  email_locked: "هذا العضو عنده حساب مفعّل بإيميل ثاني، وتغيير إيميل الدخول ما يصير من هنا",
   already_has_account: "هذا العضو عنده حساب",
   no_account: "هذا العضو ما عنده حساب بعد",
   member_not_found: "العضو غير موجود",

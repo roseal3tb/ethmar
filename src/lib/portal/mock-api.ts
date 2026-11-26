@@ -5,6 +5,7 @@ import { structureCommittees, structurePeople, structureTeams } from "@/data/str
 import {
   boardOf,
   canClaim,
+  canManageAccount,
   canReview,
   canViewHoursOf,
   headsCommittee,
@@ -635,25 +636,32 @@ export const mockApi: PortalApi = {
   },
   async memberEmails() {
     const me = meOrThrow();
-    if (!isLeadership(me)) return {};
     for (const [email, name] of Object.entries(MOCK_LOGINS)) {
       const id = s().members.find((m) => m.full_name === name)!.id;
       MOCK_EMAILS[id] ??= email;
     }
-    return { ...MOCK_EMAILS };
+    return Object.fromEntries(
+      Object.entries(MOCK_EMAILS).filter(([id]) => {
+        const t = s().members.find((m) => m.id === id);
+        return id === me.id || (!!t && canManageAccount(me, t));
+      }),
+    );
   },
   async inviteMember(memberId, email) {
-    if (!isLeadership(meOrThrow())) throw new PortalError("forbidden");
-    const m = s().members.find((x) => x.id === memberId)!;
-    const to = (email ?? MOCK_EMAILS[memberId] ?? "").trim().toLowerCase();
+    const m = s().members.find((x) => x.id === memberId);
+    if (!m || !canManageAccount(meOrThrow(), m)) throw new PortalError("forbidden");
+    const to = (email || MOCK_EMAILS[memberId] || "").trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) throw new PortalError("invalid_email");
+    if (m.has_account && MOCK_EMAILS[memberId] && MOCK_EMAILS[memberId] !== to)
+      throw new PortalError("email_locked");
     MOCK_EMAILS[memberId] = to;
     m.has_account = true;
     save();
     return { emailed: true, email: to };
   },
   async resetPassword(memberId) {
-    if (!isLeadership(meOrThrow())) throw new PortalError("forbidden");
+    const m = s().members.find((x) => x.id === memberId);
+    if (!m || !canManageAccount(meOrThrow(), m)) throw new PortalError("forbidden");
     return { emailed: true, email: MOCK_EMAILS[memberId] ?? "" };
   },
   async verifyLink() {

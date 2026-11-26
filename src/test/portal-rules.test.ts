@@ -198,3 +198,35 @@ describe("closing vs cancelling", () => {
     await expect(mockApi.claimTask("t1")).rejects.toThrow();
   });
 });
+
+describe("who may invite whom", () => {
+  it("leads invite only their own people; leadership and the admin invite anyone", async () => {
+    const yazeed = await byName("يزيد الرويتع"); // العلاقات العامة · المساندة
+    const mona = await byName("منى الروقي"); // العلاقات العامة · التواصل
+    const faris = await byName("فارس العتيبي"); // another committee
+    const raed = await byName("رائد المطيري");
+
+    await as("lead@ethmar.test"); // قائد لجنة العلاقات العامة
+    await expect(mockApi.inviteMember(yazeed.id, "y@example.com")).resolves.toBeTruthy();
+    await expect(mockApi.inviteMember(faris.id, "f@example.com")).rejects.toThrow();
+    await expect(mockApi.inviteMember(raed.id, "r@example.com")).rejects.toThrow();
+
+    await as("teamlead@ethmar.test"); // قائد فريق التواصل
+    await expect(mockApi.inviteMember(mona.id, "m@example.com")).resolves.toBeTruthy();
+    await expect(mockApi.inviteMember(yazeed.id, "y2@example.com")).rejects.toThrow();
+    const seen = Object.keys(await mockApi.memberEmails());
+    expect(seen).not.toContain(yazeed.id);
+
+    await as("member@ethmar.test");
+    await expect(mockApi.inviteMember(yazeed.id, "y3@example.com")).rejects.toThrow();
+
+    await as("rose@ethmar.test");
+    await expect(mockApi.inviteMember(faris.id, "f@example.com")).resolves.toBeTruthy();
+  });
+
+  it("an activated account keeps its login email", async () => {
+    await as("rose@ethmar.test");
+    const vp = await byName("غادة العتيبي");
+    await expect(mockApi.inviteMember(vp.id, "other@example.com")).rejects.toThrow();
+  });
+});

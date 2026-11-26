@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Wordmark } from "@/components/site/Wordmark";
 import { usingMock } from "@/lib/portal/api";
 import { relativeTime } from "@/lib/portal/dates";
-import { canReview, canSeeStats, isLeadership, myAssignment } from "@/lib/portal/permissions";
+import { canManageAccounts, canReview, canSeeStats, myAssignment } from "@/lib/portal/permissions";
 import { useDirectory, useMarkRead, useNotifications, useTasks } from "@/lib/portal/queries";
 import { useMe, useSession } from "@/lib/portal/session";
 import { cn } from "@/lib/utils";
@@ -59,7 +59,9 @@ function useNav(): NavItem[] {
     { to: "/portal/community", label: "المجتمع", icon: Users, mobile: true },
     { to: "/portal/hours", label: "ساعاتي", icon: Clock3, mobile: true },
     ...(canSeeStats(me) ? [{ to: "/portal/stats", label: "الإحصائيات", icon: BarChart3 }] : []),
-    ...(isLeadership(me) ? [{ to: "/portal/accounts", label: "الحسابات", icon: UserCog }] : []),
+    ...(canManageAccounts(me)
+      ? [{ to: "/portal/accounts", label: "الحسابات", icon: UserCog }]
+      : []),
   ];
 }
 
