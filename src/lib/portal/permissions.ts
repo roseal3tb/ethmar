@@ -90,7 +90,7 @@ export function seatsLeft(task: Task): number {
 export function canClaim(me: Member | Me | null, task: Task, today: string): boolean {
   if (!me || task.mode !== "open" || task.status !== "active" || task.due_date < today)
     return false;
-  if (task.created_by === me.id || myAssignment(me, task) || seatsLeft(task) === 0) return false;
+  if (myAssignment(me, task) || seatsLeft(task) === 0) return false;
   if (task.audience === "committee") return me.committee_id === task.committee_id;
   if (task.audience === "team") return !!me.team_id && me.team_id === task.team_id;
   if (task.audience === "leaders") return isCommitteeHead(me);

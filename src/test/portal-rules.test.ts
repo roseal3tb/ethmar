@@ -142,6 +142,53 @@ describe("task creation", () => {
   });
 });
 
+describe("self-assignment", () => {
+  const base = {
+    title: "مهمتي",
+    description: "",
+    team_id: null,
+    seats: 2,
+    hours: 3,
+    due_date: addDays(todayISO(), 3),
+  };
+
+  it("a creator can assign a task to themselves, but can't approve their own work", async () => {
+    const lead = await as("lead@ethmar.test"); // الوليد — قائد العلاقات العامة
+    const id = await mockApi.createTask({
+      ...base,
+      audience: "people",
+      committee_id: "pr",
+      mode: "assigned",
+      targets: [lead.id],
+    });
+    const t = (await mockApi.tasks()).find((x) => x.id === id)!;
+    expect(t.assignments.map((a) => a.member_id)).toEqual([lead.id]);
+    await mockApi.submitTask(id, { note: "تم", link: "", files: [] });
+    expect(canReview(lead, t, lead)).toBe(false);
+    await expect(mockApi.reviewTask(id, lead.id, true, "")).rejects.toMatchObject({
+      code: "forbidden",
+    });
+    await as("rose@ethmar.test"); // someone else approves it
+    await mockApi.reviewTask(id, lead.id, true, "");
+  });
+
+  it("a creator can take a seat on their own open task", async () => {
+    const lead = await as("lead@ethmar.test");
+    const id = await mockApi.createTask({
+      ...base,
+      audience: "committee",
+      committee_id: "pr",
+      mode: "open",
+      targets: [],
+    });
+    const t = (await mockApi.tasks()).find((x) => x.id === id)!;
+    expect(canClaim(lead, t, todayISO())).toBe(true);
+    await mockApi.claimTask(id);
+    const after = (await mockApi.tasks()).find((x) => x.id === id)!;
+    expect(after.assignments.map((a) => a.member_id)).toContain(lead.id);
+  });
+});
+
 describe("agenda grouping", () => {
   it("groups by Saudi week (Sunday → Saturday) and sinks finished tasks", () => {
     const today = "2026-11-25"; // Wednesday

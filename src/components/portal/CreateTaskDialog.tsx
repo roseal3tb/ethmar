@@ -6,6 +6,7 @@ import {
   Search,
   Users,
   UsersRound,
+  UserRound,
   UserRoundCheck,
   Crown,
   FolderKanban,
@@ -103,18 +104,26 @@ function CreateTaskForm({
   const [tried, setTried] = useState(false);
 
   const effectiveMode: TaskMode = audience === "people" ? "assigned" : mode;
-  const pool = useMemo(() => {
+  const eligible = useMemo(() => {
     if (!dir) return [];
-    let list = dir.members.filter((m) => m.id !== me.id);
+    let list = [...dir.members];
     if (audience === "leaders") list = list.filter((m) => COMMITTEE_HEADS.includes(m.role));
     else if (audience === "project") {
       const ids = new Set(project?.members.map((x) => x.member_id) ?? []);
       list = list.filter((m) => ids.has(m.id));
     } else list = list.filter((m) => m.committee_id === committeeId);
     if (audience === "team") list = list.filter((m) => m.team_id === teamId);
-    if (q.trim()) list = list.filter((m) => m.full_name.includes(q.trim()));
-    return list;
-  }, [dir, me.id, audience, committeeId, teamId, q, project]);
+    // You can take the task yourself: keep yourself pinned first.
+    return list.sort((a, b) => Number(b.id === me.id) - Number(a.id === me.id));
+  }, [dir, me.id, audience, committeeId, teamId, project]);
+  const pool = useMemo(
+    () => (q.trim() ? eligible.filter((m) => m.full_name.includes(q.trim())) : eligible),
+    [eligible, q],
+  );
+  const selfOk = eligible.some((m) => m.id === me.id);
+  const selfOn = targets.includes(me.id);
+  // Drop picks that no longer fit after switching audience, committee or team.
+  const picked = targets.filter((id) => eligible.some((m) => m.id === id));
 
   const audiences: {
     id: Audience;
@@ -167,7 +176,7 @@ function CreateTaskForm({
     seats:
       effectiveMode === "open" && !(seats >= 1 && seats <= 200) ? "عدد المقاعد غير صحيح" : null,
     targets:
-      effectiveMode === "assigned" && targets.length === 0 ? "اختر شخصًا واحدًا على الأقل" : null,
+      effectiveMode === "assigned" && picked.length === 0 ? "اختر شخصًا واحدًا على الأقل" : null,
     project: audience === "project" && !project ? "اختر المشروع" : null,
   };
   const valid = Object.values(errors).every((e) => !e);
@@ -188,11 +197,15 @@ function CreateTaskForm({
         seats: effectiveMode === "open" ? seats : null,
         hours,
         due_date: due,
-        targets: effectiveMode === "assigned" ? targets : [],
+        targets: effectiveMode === "assigned" ? picked : [],
       });
       toast.success("نُشرت المهمة", {
         description:
-          effectiveMode === "assigned" ? "وصل إشعار للمسندة لهم" : "وصل إشعار للي يقدرون يسحبونها",
+          effectiveMode !== "assigned"
+            ? "وصل إشعار للي يقدرون يسحبونها"
+            : picked.length === 1 && picked[0] === me.id
+              ? "صارت في مهامك"
+              : "وصل إشعار للمسندة لهم",
       });
       onDone(id as string);
     } catch (err) {
@@ -432,7 +445,27 @@ function CreateTaskForm({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-[var(--p-soft)]">اختر الأشخاص</span>
-            <span className="text-xs text-[var(--p-dim)]">{targets.length} مختارين</span>
+            <span className="flex items-center gap-2">
+              {selfOk && (
+                <button
+                  type="button"
+                  aria-pressed={selfOn}
+                  onClick={() =>
+                    setTargets((t) => (selfOn ? t.filter((x) => x !== me.id) : [...t, me.id]))
+                  }
+                  className={cn(
+                    "p-tap inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold transition-colors",
+                    selfOn
+                      ? "border-transparent bg-[var(--p-gold)] text-[#1d1606]"
+                      : "border-[var(--p-line-strong)] text-[var(--p-soft)] hover:bg-[rgb(200_222_211/0.06)]",
+                  )}
+                >
+                  {selfOn ? <Check className="size-3.5" /> : <UserRound className="size-3.5" />}
+                  لي أنا
+                </button>
+              )}
+              <span className="text-xs text-[var(--p-dim)]">{picked.length} مختارين</span>
+            </span>
           </div>
           <label className="relative block">
             <Search className="pointer-events-none absolute top-1/2 start-3.5 size-4 -translate-y-1/2 text-[var(--p-dim)]" />
@@ -464,7 +497,14 @@ function CreateTaskForm({
                   >
                     <Avatar name={m.full_name} size={30} />
                     <span className="min-w-0 flex-1">
-                      <b className="block truncate text-sm">{m.full_name}</b>
+                      <b className="flex items-center gap-1.5 truncate text-sm">
+                        <span className="truncate">{m.full_name}</span>
+                        {m.id === me.id && (
+                          <span className="shrink-0 rounded-full bg-[rgb(198_164_92/0.14)] px-2 py-0.5 text-[11px] font-bold text-[var(--p-gold)]">
+                            أنت
+                          </span>
+                        )}
+                      </b>
                       <span className="text-xs text-[var(--p-dim)]">
                         {audience === "leaders" || audience === "project"
                           ? dir?.committee(m.committee_id)?.name
@@ -486,6 +526,11 @@ function CreateTaskForm({
               );
             })}
           </ul>
+          {selfOn && (
+            <p className="text-xs text-[var(--p-dim)]">
+              لما تسلّمها، يعتمد ساعاتك شخص غيرك من المسؤولين
+            </p>
+          )}
           {err("targets")}
         </div>
       )}
